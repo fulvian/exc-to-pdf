@@ -12,6 +12,7 @@ matplotlib>=3.7.0             # Chart recreation and visualization
 babel>=2.12.0                 # Internationalization support
 pytz>=2023.3                  # Timezone support for i18n
 numpy>=1.24.0                 # Numerical computing (matplotlib dependency)
+psutil>=5.9.0                 # System and process monitoring
 
 # Development Dependencies
 pytest>=7.0.0                 # Testing framework
