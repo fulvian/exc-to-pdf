@@ -10,9 +10,10 @@ import tempfile
 from pathlib import Path
 
 # Add src to path for imports
-src_path = os.path.join(os.path.dirname(__file__), 'src')
+src_path = os.path.join(os.path.dirname(__file__), "src")
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
+
 
 def test_imports():
     """Test that all documented imports work."""
@@ -20,6 +21,7 @@ def test_imports():
 
     try:
         from exc_to_pdf import PDFGenerator
+
         print("✅ PDFGenerator import successful")
     except ImportError as e:
         print(f"❌ PDFGenerator import failed: {e}")
@@ -27,6 +29,7 @@ def test_imports():
 
     try:
         from exc_to_pdf.config import PDFConfig
+
         print("✅ PDFConfig import successful")
     except ImportError as e:
         print(f"❌ PDFConfig import failed: {e}")
@@ -36,14 +39,16 @@ def test_imports():
         from exc_to_pdf.exceptions import (
             InvalidFileException,
             PDFGenerationException,
-            ExcelReaderError
+            ExcelReaderError,
         )
+
         print("✅ Exception imports successful")
     except ImportError as e:
         print(f"❌ Exception imports failed: {e}")
         return False
 
     return True
+
 
 def test_basic_pdfgenerator_creation():
     """Test basic PDFGenerator creation."""
@@ -58,6 +63,7 @@ def test_basic_pdfgenerator_creation():
 
         # Test with custom config
         from exc_to_pdf.config import PDFConfig
+
         config = PDFConfig()
         config.table_style = "modern"
         config.orientation = "portrait"
@@ -70,6 +76,7 @@ def test_basic_pdfgenerator_creation():
     except Exception as e:
         print(f"❌ PDFGenerator creation failed: {e}")
         return False
+
 
 def test_configuration_options():
     """Test configuration options."""
@@ -106,6 +113,7 @@ def test_configuration_options():
         print(f"❌ Configuration test failed: {e}")
         return False
 
+
 def test_error_handling():
     """Test error handling patterns."""
     print("\n🧪 Testing error handling...")
@@ -114,14 +122,14 @@ def test_error_handling():
         from exc_to_pdf.exceptions import (
             InvalidFileException,
             ExcelReaderError,
-            PDFGenerationException
+            PDFGenerationException,
         )
 
         # Test exception creation
         error = InvalidFileException(
             message="Test file not found",
             file_path="/path/to/test.xlsx",
-            context={"operation": "test"}
+            context={"operation": "test"},
         )
 
         # Test exception attributes
@@ -141,6 +149,7 @@ def test_error_handling():
     except Exception as e:
         print(f"❌ Error handling test failed: {e}")
         return False
+
 
 def test_example_code_structure():
     """Test that example code structure is valid."""
@@ -180,6 +189,7 @@ def test_example_code_structure():
         print(f"❌ Example code structure test failed: {e}")
         return False
 
+
 def test_batch_processing_pattern():
     """Test batch processing pattern from documentation."""
     print("\n🧪 Testing batch processing pattern...")
@@ -188,7 +198,9 @@ def test_batch_processing_pattern():
         from exc_to_pdf import PDFGenerator
         import os
 
-        def convert_directory_mock(input_dir: str, output_dir: str, template: str = "modern"):
+        def convert_directory_mock(
+            input_dir: str, output_dir: str, template: str = "modern"
+        ):
             """Mock version of batch processing from documentation"""
             generator = PDFGenerator()
 
@@ -222,6 +234,7 @@ def test_batch_processing_pattern():
         print(f"❌ Batch processing pattern test failed: {e}")
         return False
 
+
 def main():
     """Run all tests."""
     print("🚀 Testing exc-to-pdf Documentation Examples")
@@ -233,7 +246,7 @@ def main():
         test_configuration_options,
         test_error_handling,
         test_example_code_structure,
-        test_batch_processing_pattern
+        test_batch_processing_pattern,
     ]
 
     passed = 0
@@ -254,6 +267,7 @@ def main():
     else:
         print(f"⚠️  {total - passed} tests failed. Review documentation examples.")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

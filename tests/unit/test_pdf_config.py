@@ -7,8 +7,8 @@ management functionality.
 
 import pytest
 
-from src.config.pdf_config import PDFConfig, DEFAULT_PDF_CONFIG
-from src.exceptions import ConfigurationException
+from exc_to_pdf.config.pdf_config import PDFConfig, DEFAULT_PDF_CONFIG
+from exc_to_pdf.exceptions import ConfigurationException
 
 
 class TestPDFConfig:
@@ -57,7 +57,7 @@ class TestPDFConfig:
             max_table_rows_per_page=100,
             enable_table_splitting=False,
             font_size=12,
-            header_font_size=14
+            header_font_size=14,
         )
 
         # Should not raise any exceptions
@@ -164,11 +164,7 @@ class TestPDFConfig:
 
     def test_to_dict_method(self) -> None:
         """Test that to_dict method returns correct dictionary representation."""
-        config = PDFConfig(
-            page_size="A3",
-            font_size=12,
-            header_background="#FF0000"
-        )
+        config = PDFConfig(page_size="A3", font_size=12, header_background="#FF0000")
 
         config_dict = config.to_dict()
 

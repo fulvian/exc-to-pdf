@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class ChartRenderer:
     """Renders charts for PDF integration."""
 
-    def __init__(self, dpi: int = 300, format_type: str = 'png'):
+    def __init__(self, dpi: int = 300, format_type: str = "png"):
         """Initialize chart renderer.
 
         Args:
@@ -35,8 +35,10 @@ class ChartRenderer:
         self.dpi = dpi
         self.format_type = format_type.lower()
 
-        if self.format_type not in ['png', 'pdf', 'svg']:
-            raise ValueError(f"Unsupported format: {format_type}. Use 'png', 'pdf', or 'svg'")
+        if self.format_type not in ["png", "pdf", "svg"]:
+            raise ValueError(
+                f"Unsupported format: {format_type}. Use 'png', 'pdf', or 'svg'"
+            )
 
     def render_chart_to_image(self, figure: Figure) -> Optional[ImageReader]:
         """Render a matplotlib figure to a ReportLab-compatible image.
@@ -49,7 +51,9 @@ class ChartRenderer:
         """
         try:
             # Create temporary file for chart
-            with tempfile.NamedTemporaryFile(suffix=f'.{self.format_type}', delete=False) as tmp_file:
+            with tempfile.NamedTemporaryFile(
+                suffix=f".{self.format_type}", delete=False
+            ) as tmp_file:
                 temp_path = tmp_file.name
 
             # Save figure with high quality
@@ -57,10 +61,10 @@ class ChartRenderer:
                 temp_path,
                 format=self.format_type,
                 dpi=self.dpi,
-                bbox_inches='tight',
-                facecolor='white',
-                edgecolor='none',
-                transparent=False
+                bbox_inches="tight",
+                facecolor="white",
+                edgecolor="none",
+                transparent=False,
             )
 
             # Create ReportLab ImageReader
@@ -75,7 +79,7 @@ class ChartRenderer:
         except Exception as e:
             logger.error(f"Error rendering chart to image: {e}")
             # Clean up temporary file if it exists
-            if 'temp_path' in locals():
+            if "temp_path" in locals():
                 Path(temp_path).unlink(missing_ok=True)
             return None
 
@@ -97,10 +101,10 @@ class ChartRenderer:
                 buffer,
                 format=self.format_type,
                 dpi=self.dpi,
-                bbox_inches='tight',
-                facecolor='white',
-                edgecolor='none',
-                transparent=False
+                bbox_inches="tight",
+                facecolor="white",
+                edgecolor="none",
+                transparent=False,
             )
 
             # Get bytes data
@@ -108,18 +112,20 @@ class ChartRenderer:
             image_data = buffer.getvalue()
             buffer.close()
 
-            logger.debug(f"Successfully rendered chart to bytes ({len(image_data)} bytes)")
+            logger.debug(
+                f"Successfully rendered chart to bytes ({len(image_data)} bytes)"
+            )
             return image_data
 
         except Exception as e:
             logger.error(f"Error rendering chart to bytes: {e}")
-            if 'buffer' in locals():
+            if "buffer" in locals():
                 buffer.close()
             return None
 
-    def render_chart_to_reportlab_image(self, figure: Figure,
-                                      width: float = None,
-                                      height: float = None) -> Optional[Image]:
+    def render_chart_to_reportlab_image(
+        self, figure: Figure, width: float = None, height: float = None
+    ) -> Optional[Image]:
         """Render a matplotlib figure directly to a ReportLab Image.
 
         Args:
@@ -161,12 +167,13 @@ class ChartRenderer:
 
         except Exception as e:
             logger.error(f"Error rendering chart to ReportLab Image: {e}")
-            if 'image_buffer' in locals():
+            if "image_buffer" in locals():
                 image_buffer.close()
             return None
 
-    def render_charts_from_excel(self, excel_file_path: str,
-                               charts_info: List[ChartInfo]) -> List[Image]:
+    def render_charts_from_excel(
+        self, excel_file_path: str, charts_info: List[ChartInfo]
+    ) -> List[Image]:
         """Render charts directly from Excel file.
 
         Args:
@@ -204,12 +211,14 @@ class ChartRenderer:
         except Exception as e:
             logger.error(f"Error rendering charts from Excel: {e}")
 
-        logger.info(f"Successfully rendered {len(images)} out of {len(charts_info)} charts")
+        logger.info(
+            f"Successfully rendered {len(images)} out of {len(charts_info)} charts"
+        )
         return images
 
-    def calculate_optimal_size(self, figure: Figure,
-                             max_width: float = 400,
-                             max_height: float = 300) -> tuple[float, float]:
+    def calculate_optimal_size(
+        self, figure: Figure, max_width: float = 400, max_height: float = 300
+    ) -> tuple[float, float]:
         """Calculate optimal size for chart rendering.
 
         Args:
@@ -243,9 +252,9 @@ class ChartRenderer:
             logger.error(f"Error calculating optimal size: {e}")
             return max_width, max_height
 
-    def render_chart_with_size(self, figure: Figure,
-                             max_width: float = 400,
-                             max_height: float = 300) -> Optional[Image]:
+    def render_chart_with_size(
+        self, figure: Figure, max_width: float = 400, max_height: float = 300
+    ) -> Optional[Image]:
         """Render chart with automatic size calculation.
 
         Args:
@@ -270,4 +279,4 @@ class ChartRenderer:
     def cleanup(self):
         """Clean up resources."""
         # Clean up any matplotlib resources
-        plt.close('all')
+        plt.close("all")

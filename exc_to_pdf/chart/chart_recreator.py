@@ -38,7 +38,9 @@ class ChartRecreator:
         self.workbook = load_workbook(excel_file_path, data_only=True)
 
         # Set matplotlib style for professional appearance
-        plt.style.use('seaborn-v0_8' if 'seaborn-v0_8' in plt.style.available else 'default')
+        plt.style.use(
+            "seaborn-v0_8" if "seaborn-v0_8" in plt.style.available else "default"
+        )
 
     def recreate_chart(self, chart_info: ChartInfo) -> Optional[Figure]:
         """Recreate a chart based on ChartInfo.
@@ -79,7 +81,7 @@ class ChartRecreator:
 
             # Set title
             if chart_info.title:
-                ax.set_title(chart_info.title, fontsize=14, fontweight='bold', pad=20)
+                ax.set_title(chart_info.title, fontsize=14, fontweight="bold", pad=20)
 
             # Adjust layout
             plt.tight_layout()
@@ -89,7 +91,7 @@ class ChartRecreator:
 
         except Exception as e:
             logger.error(f"Error recreating chart {chart_info.title}: {e}")
-            if 'fig' in locals():
+            if "fig" in locals():
                 plt.close(fig)
             return None
 
@@ -123,9 +125,11 @@ class ChartRecreator:
                 # Extract data
                 range_data = []
                 for row in worksheet.iter_rows(
-                    min_row=start_row, max_row=end_row,
-                    min_col=start_col, max_col=end_col,
-                    values_only=True
+                    min_row=start_row,
+                    max_row=end_row,
+                    min_col=start_col,
+                    max_col=end_col,
+                    values_only=True,
                 ):
                     range_data.append(row)
 
@@ -144,8 +148,10 @@ class ChartRecreator:
             if combined_data.shape[0] > 0:
                 first_row = combined_data.iloc[0]
                 if any(isinstance(val, str) for val in first_row if val is not None):
-                    combined_data.columns = [str(val) if val is not None else f'Col_{i}'
-                                           for i, val in enumerate(first_row)]
+                    combined_data.columns = [
+                        str(val) if val is not None else f"Col_{i}"
+                        for i, val in enumerate(first_row)
+                    ]
                     combined_data = combined_data.iloc[1:]
 
             return combined_data
@@ -165,26 +171,26 @@ class ChartRecreator:
         """
         try:
             # Remove $ symbols and split
-            clean_range = range_str.replace('$', '')
+            clean_range = range_str.replace("$", "")
 
             # Check if worksheet name is included
-            if '!' in clean_range:
-                worksheet_name, range_part = clean_range.split('!', 1)
+            if "!" in clean_range:
+                worksheet_name, range_part = clean_range.split("!", 1)
             else:
                 worksheet_name = None
                 range_part = clean_range
 
             # Parse range part
-            if ':' not in range_part:
+            if ":" not in range_part:
                 return None
 
-            start_cell, end_cell = range_part.split(':', 1)
+            start_cell, end_cell = range_part.split(":", 1)
 
             # Convert column letters to numbers
-            start_col = self._col_letter_to_number(start_cell.rstrip('0123456789'))
-            start_row = int(start_cell.lstrip('ABCDEFGHIJKLMNOPQRSTUVWXYZ'))
-            end_col = self._col_letter_to_number(end_cell.rstrip('0123456789'))
-            end_row = int(end_cell.lstrip('ABCDEFGHIJKLMNOPQRSTUVWXYZ'))
+            start_col = self._col_letter_to_number(start_cell.rstrip("0123456789"))
+            start_row = int(start_cell.lstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+            end_col = self._col_letter_to_number(end_cell.rstrip("0123456789"))
+            end_row = int(end_cell.lstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
 
             return worksheet_name, start_col, start_row, end_col, end_row
 
@@ -203,7 +209,7 @@ class ChartRecreator:
         """
         result = 0
         for char in col_letter:
-            result = result * 26 + (ord(char.upper()) - ord('A') + 1)
+            result = result * 26 + (ord(char.upper()) - ord("A") + 1)
         return result
 
     def _recreate_bar_chart(self, ax: Axes, data: pd.DataFrame, chart_info: ChartInfo):
@@ -230,7 +236,7 @@ class ChartRecreator:
             ax.bar(x_pos + i * width, series, width, label=str(col_name))
 
         ax.set_xlabel(str(data.columns[0]))
-        ax.set_ylabel('Values')
+        ax.set_ylabel("Values")
         ax.set_xticks(x_pos + width * (len(series_data.columns) - 1) / 2)
         ax.set_xticklabels([str(val) for val in categories], rotation=45)
 
@@ -255,10 +261,10 @@ class ChartRecreator:
 
         # Create line chart
         for col_name, series in series_data.items():
-            ax.plot(x_data, series, marker='o', label=str(col_name))
+            ax.plot(x_data, series, marker="o", label=str(col_name))
 
         ax.set_xlabel(str(data.columns[0]))
-        ax.set_ylabel('Values')
+        ax.set_ylabel("Values")
 
         if len(series_data.columns) > 1:
             ax.legend()
@@ -280,10 +286,17 @@ class ChartRecreator:
         values = data.iloc[:, 1]
 
         # Create pie chart
-        ax.pie(values, labels=[str(val) for val in labels], autopct='%1.1f%%', startangle=90)
-        ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle
+        ax.pie(
+            values,
+            labels=[str(val) for val in labels],
+            autopct="%1.1f%%",
+            startangle=90,
+        )
+        ax.axis("equal")  # Equal aspect ratio ensures that pie is drawn as a circle
 
-    def _recreate_scatter_chart(self, ax: Axes, data: pd.DataFrame, chart_info: ChartInfo):
+    def _recreate_scatter_chart(
+        self, ax: Axes, data: pd.DataFrame, chart_info: ChartInfo
+    ):
         """Recreate a scatter chart.
 
         Args:
@@ -308,7 +321,7 @@ class ChartRecreator:
         # Add third dimension as color if available
         if data.shape[1] > 2:
             colors = data.iloc[:, 2]
-            scatter = ax.scatter(x_data, y_data, c=colors, alpha=0.6, cmap='viridis')
+            scatter = ax.scatter(x_data, y_data, c=colors, alpha=0.6, cmap="viridis")
             plt.colorbar(scatter, ax=ax, label=str(data.columns[2]))
 
     def _recreate_area_chart(self, ax: Axes, data: pd.DataFrame, chart_info: ChartInfo):
@@ -328,11 +341,15 @@ class ChartRecreator:
         series_data = data.iloc[:, 1:]
 
         # Create area chart (stacked if multiple series)
-        ax.stackplot(x_data, [series for _, series in series_data.items()],
-                    labels=[str(col) for col in series_data.columns], alpha=0.7)
+        ax.stackplot(
+            x_data,
+            [series for _, series in series_data.items()],
+            labels=[str(col) for col in series_data.columns],
+            alpha=0.7,
+        )
 
         ax.set_xlabel(str(data.columns[0]))
-        ax.set_ylabel('Values')
+        ax.set_ylabel("Values")
 
         if len(series_data.columns) > 1:
             ax.legend()
@@ -348,27 +365,27 @@ class ChartRecreator:
             styling = chart_info.styling
 
             # Apply legend settings
-            if 'legend' in styling:
-                legend_settings = styling['legend']
+            if "legend" in styling:
+                legend_settings = styling["legend"]
                 if ax.get_legend():
-                    ax.get_legend().set_visible(legend_settings.get('visible', True))
+                    ax.get_legend().set_visible(legend_settings.get("visible", True))
 
             # Apply axis titles
-            if 'x_axis' in styling:
-                x_axis = styling['x_axis']
-                if 'title' in x_axis and x_axis['title']:
-                    ax.set_xlabel(x_axis['title'])
+            if "x_axis" in styling:
+                x_axis = styling["x_axis"]
+                if "title" in x_axis and x_axis["title"]:
+                    ax.set_xlabel(x_axis["title"])
 
-            if 'y_axis' in styling:
-                y_axis = styling['y_axis']
-                if 'title' in y_axis and y_axis['title']:
-                    ax.set_ylabel(y_axis['title'])
+            if "y_axis" in styling:
+                y_axis = styling["y_axis"]
+                if "title" in y_axis and y_axis["title"]:
+                    ax.set_ylabel(y_axis["title"])
 
             # Apply grid
             ax.grid(True, alpha=0.3)
 
             # Set background color
-            ax.set_facecolor('#ffffff')
+            ax.set_facecolor("#ffffff")
 
         except Exception as e:
             logger.error(f"Error applying styling: {e}")
@@ -389,5 +406,7 @@ class ChartRecreator:
             if fig:
                 figures.append(fig)
 
-        logger.info(f"Successfully recreated {len(figures)} out of {len(charts_info)} charts")
+        logger.info(
+            f"Successfully recreated {len(figures)} out of {len(charts_info)} charts"
+        )
         return figures

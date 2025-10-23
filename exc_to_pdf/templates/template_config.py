@@ -49,24 +49,30 @@ class BrandingConfig:
     def _validate_colors(self) -> None:
         """Validate color format."""
         colors = [
-            ('primary_color', self.primary_color),
-            ('secondary_color', self.secondary_color),
-            ('accent_color', self.accent_color),
-            ('text_color', self.text_color)
+            ("primary_color", self.primary_color),
+            ("secondary_color", self.secondary_color),
+            ("accent_color", self.accent_color),
+            ("text_color", self.text_color),
         ]
 
         for color_name, color_value in colors:
-            if not isinstance(color_value, str) or not color_value.startswith('#'):
-                raise ConfigurationException(f"{color_name} must be a hex color string (e.g., '#FF0000'), got {color_value}")
+            if not isinstance(color_value, str) or not color_value.startswith("#"):
+                raise ConfigurationException(
+                    f"{color_name} must be a hex color string (e.g., '#FF0000'), got {color_value}"
+                )
             if len(color_value) != 7:
-                raise ConfigurationException(f"{color_name} must be 7 characters hex color (e.g., '#FF0000'), got {color_value}")
+                raise ConfigurationException(
+                    f"{color_name} must be 7 characters hex color (e.g., '#FF0000'), got {color_value}"
+                )
 
     def _validate_logo_path(self) -> None:
         """Validate logo file path."""
         if self.company_logo_path:
             logo_path = Path(self.company_logo_path)
             if not logo_path.exists():
-                raise ConfigurationException(f"Logo file not found: {self.company_logo_path}")
+                raise ConfigurationException(
+                    f"Logo file not found: {self.company_logo_path}"
+                )
 
 
 @dataclass
@@ -146,12 +152,16 @@ class TemplateConfig:
         # Validate page size
         valid_page_sizes = ["A4", "A3", "A5", "Letter", "Legal"]
         if self.page_size not in valid_page_sizes:
-            raise ConfigurationException(f"Invalid page_size: {self.page_size}. Must be one of {valid_page_sizes}")
+            raise ConfigurationException(
+                f"Invalid page_size: {self.page_size}. Must be one of {valid_page_sizes}"
+            )
 
         # Validate orientation
         valid_orientations = ["portrait", "landscape"]
         if self.orientation not in valid_orientations:
-            raise ConfigurationException(f"Invalid orientation: {self.orientation}. Must be one of {valid_orientations}")
+            raise ConfigurationException(
+                f"Invalid orientation: {self.orientation}. Must be one of {valid_orientations}"
+            )
 
         # Validate alignments
         valid_alignments = ["left", "center", "right", "justify"]
@@ -159,75 +169,81 @@ class TemplateConfig:
             ("title_alignment", self.title_alignment),
             ("header_alignment", self.header_alignment),
             ("data_alignment", self.data_alignment),
-            ("footer_alignment", self.footer_alignment)
+            ("footer_alignment", self.footer_alignment),
         ]:
             if align_value not in valid_alignments:
-                raise ConfigurationException(f"Invalid {align_name}: {align_value}. Must be one of {valid_alignments}")
+                raise ConfigurationException(
+                    f"Invalid {align_name}: {align_value}. Must be one of {valid_alignments}"
+                )
 
         # Validate font sizes
         for size_name, size_value in [
             ("font_size", self.font_size),
             ("header_font_size", self.header_font_size),
             ("title_font_size", self.title_font_size),
-            ("footer_font_size", self.footer_font_size)
+            ("footer_font_size", self.footer_font_size),
         ]:
             if size_value <= 0 or size_value > 72:
-                raise ConfigurationException(f"{size_name} must be between 1 and 72, got {size_value}")
+                raise ConfigurationException(
+                    f"{size_name} must be between 1 and 72, got {size_value}"
+                )
 
         # Validate chart position
         valid_chart_positions = ["after_table", "before_table", "separate_page"]
         if self.chart_position not in valid_chart_positions:
-            raise ConfigurationException(f"Invalid chart_position: {self.chart_position}. Must be one of {valid_chart_positions}")
+            raise ConfigurationException(
+                f"Invalid chart_position: {self.chart_position}. Must be one of {valid_chart_positions}"
+            )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary."""
         return {
-            'template_name': self.template_name,
-            'base_template': self.base_template,
-            'template_version': self.template_version,
-            'page_size': self.page_size,
-            'orientation': self.orientation,
-            'margin_top': self.margin_top,
-            'margin_bottom': self.margin_bottom,
-            'margin_left': self.margin_left,
-            'margin_right': self.margin_right,
-            'table_style': self.table_style,
-            'header_background': self.header_background,
-            'header_text_color': self.header_text_color,
-            'alternate_rows': self.alternate_rows,
-            'alternate_row_color': self.alternate_row_color,
-            'border_color': self.border_color,
-            'grid_color': self.grid_color,
-            'font_family': self.font_family,
-            'font_size': self.font_size,
-            'header_font_size': self.header_font_size,
-            'title_font_size': self.title_font_size,
-            'title_alignment': self.title_alignment,
-            'header_alignment': self.header_alignment,
-            'data_alignment': self.data_alignment,
-            'include_footer': self.include_footer,
-            'footer_text': self.footer_text,
-            'footer_alignment': self.footer_alignment,
-            'footer_font_size': self.footer_font_size,
-            'include_header': self.include_header,
-            'header_text': self.header_text,
-            'show_page_numbers': self.show_page_numbers,
-            'page_number_format': self.page_number_format,
-            'dynamic_column_width': self.dynamic_column_width,
-            'auto_adjust_margins': self.auto_adjust_margins,
-            'responsive_tables': self.responsive_tables,
-            'include_charts': self.include_charts,
-            'chart_position': self.chart_position,
-            'chart_max_size': self.chart_max_size,
-            'branding': self.branding.__dict__ if self.branding else None,
-            'custom_styles': self.custom_styles
+            "template_name": self.template_name,
+            "base_template": self.base_template,
+            "template_version": self.template_version,
+            "page_size": self.page_size,
+            "orientation": self.orientation,
+            "margin_top": self.margin_top,
+            "margin_bottom": self.margin_bottom,
+            "margin_left": self.margin_left,
+            "margin_right": self.margin_right,
+            "table_style": self.table_style,
+            "header_background": self.header_background,
+            "header_text_color": self.header_text_color,
+            "alternate_rows": self.alternate_rows,
+            "alternate_row_color": self.alternate_row_color,
+            "border_color": self.border_color,
+            "grid_color": self.grid_color,
+            "font_family": self.font_family,
+            "font_size": self.font_size,
+            "header_font_size": self.header_font_size,
+            "title_font_size": self.title_font_size,
+            "title_alignment": self.title_alignment,
+            "header_alignment": self.header_alignment,
+            "data_alignment": self.data_alignment,
+            "include_footer": self.include_footer,
+            "footer_text": self.footer_text,
+            "footer_alignment": self.footer_alignment,
+            "footer_font_size": self.footer_font_size,
+            "include_header": self.include_header,
+            "header_text": self.header_text,
+            "show_page_numbers": self.show_page_numbers,
+            "page_number_format": self.page_number_format,
+            "dynamic_column_width": self.dynamic_column_width,
+            "auto_adjust_margins": self.auto_adjust_margins,
+            "responsive_tables": self.responsive_tables,
+            "include_charts": self.include_charts,
+            "chart_position": self.chart_position,
+            "chart_max_size": self.chart_max_size,
+            "branding": self.branding.__dict__ if self.branding else None,
+            "custom_styles": self.custom_styles,
         }
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> 'TemplateConfig':
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "TemplateConfig":
         """Create configuration from dictionary."""
         # Handle branding configuration
-        branding_dict = config_dict.pop('branding', None)
+        branding_dict = config_dict.pop("branding", None)
         branding = BrandingConfig(**branding_dict) if branding_dict else None
 
         return cls(**config_dict, branding=branding)
@@ -235,26 +251,32 @@ class TemplateConfig:
     def save_to_file(self, file_path: str) -> None:
         """Save configuration to JSON file."""
         try:
-            with open(file_path, 'w') as f:
+            with open(file_path, "w") as f:
                 json.dump(self.to_dict(), f, indent=2)
         except Exception as e:
-            raise ConfigurationException(f"Failed to save template config to {file_path}: {e}")
+            raise ConfigurationException(
+                f"Failed to save template config to {file_path}: {e}"
+            )
 
     @classmethod
-    def load_from_file(cls, file_path: str) -> 'TemplateConfig':
+    def load_from_file(cls, file_path: str) -> "TemplateConfig":
         """Load configuration from JSON file."""
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 config_dict = json.load(f)
             return cls.from_dict(config_dict)
         except FileNotFoundError:
             raise ConfigurationException(f"Template config file not found: {file_path}")
         except json.JSONDecodeError as e:
-            raise ConfigurationException(f"Invalid JSON in template config file {file_path}: {e}")
+            raise ConfigurationException(
+                f"Invalid JSON in template config file {file_path}: {e}"
+            )
         except Exception as e:
-            raise ConfigurationException(f"Failed to load template config from {file_path}: {e}")
+            raise ConfigurationException(
+                f"Failed to load template config from {file_path}: {e}"
+            )
 
-    def merge_with_base(self, base_config: 'TemplateConfig') -> 'TemplateConfig':
+    def merge_with_base(self, base_config: "TemplateConfig") -> "TemplateConfig":
         """Merge this configuration with a base configuration.
 
         Args:
@@ -273,15 +295,15 @@ class TemplateConfig:
 
         # Handle branding merge specially
         if self.branding:
-            if merged_dict['branding']:
+            if merged_dict["branding"]:
                 # Merge branding dictionaries
-                base_branding = merged_dict['branding']
+                base_branding = merged_dict["branding"]
                 current_branding = self.branding.__dict__
                 for key, value in current_branding.items():
                     if value is not None and value != "":
                         base_branding[key] = value
-                merged_dict['branding'] = base_branding
+                merged_dict["branding"] = base_branding
             else:
-                merged_dict['branding'] = self.branding.__dict__
+                merged_dict["branding"] = self.branding.__dict__
 
-        return cls.from_dict(merged_dict)
+        return self.__class__.from_dict(merged_dict)

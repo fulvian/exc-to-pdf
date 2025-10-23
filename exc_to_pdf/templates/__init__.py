@@ -10,10 +10,10 @@ from .template_config import TemplateConfig, BrandingConfig
 from .style_presets import StylePresets, TemplateStyle
 
 __all__ = [
-    'TemplateManager',
-    'Template',
-    'TemplateConfig',
-    'BrandingConfig',
-    'StylePresets',
-    'TemplateStyle'
+    "TemplateManager",
+    "Template",
+    "TemplateConfig",
+    "BrandingConfig",
+    "StylePresets",
+    "TemplateStyle",
 ]

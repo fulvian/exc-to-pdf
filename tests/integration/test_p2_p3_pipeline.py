@@ -15,10 +15,10 @@ import pytest
 from openpyxl import Workbook
 from _pytest.fixtures import SubRequest
 
-from src.excel_processor import ExcelReader, SheetData
-from src.pdf_generator import PDFGenerator
-from src.config.pdf_config import PDFConfig
-from src.exceptions import ExcelReaderError, PDFGenerationException
+from exc_to_pdf.excel_processor import ExcelReader, SheetData
+from exc_to_pdf.pdf_generator import PDFGenerator
+from exc_to_pdf.config.pdf_config import PDFConfig
+from exc_to_pdf.exceptions import ExcelReaderError, PDFGenerationException
 
 # Test configuration constants
 TEMP_DIR = Path(tempfile.gettempdir()) / "exc-to-pdf-test"
@@ -78,7 +78,9 @@ def sample_excel_file_path() -> str:
     ws_large = wb.create_sheet("Large Dataset")
     ws_large.append(["ID", "Category", "Value", "Description"])
     for i in range(1, 101):  # 100 rows of data
-        ws_large.append([f"ID{i:03d}", f"Cat{i%10}", i * 10, f"Description for item {i}"])
+        ws_large.append(
+            [f"ID{i:03d}", f"Cat{i%10}", i * 10, f"Description for item {i}"]
+        )
 
     wb.save(excel_path)
     return str(excel_path)
@@ -159,11 +161,14 @@ def excel_processor_factory() -> Callable[[str], ExcelReader]:
     Returns:
         Function that creates ExcelReader instances
     """
+
     def _create_processor(file_path: str) -> ExcelReader:
         # Create config with read_only_mode disabled to avoid page_setup issues
-        from src.config.excel_config import ExcelConfig
+        from exc_to_pdf.config.excel_config import ExcelConfig
+
         config = ExcelConfig(read_only_mode=False)
         return ExcelReader(file_path, config)
+
     return _create_processor
 
 
@@ -189,7 +194,7 @@ def pdf_generator_ai_optimized() -> PDFGenerator:
         include_bookmarks=True,
         include_metadata=True,
         page_size="A4",
-        orientation="portrait"
+        orientation="portrait",
     )
     return PDFGenerator(config)
 
@@ -206,7 +211,7 @@ def pdf_generator_landscape() -> PDFGenerator:
         include_bookmarks=False,
         include_metadata=True,
         page_size="A4",
-        orientation="landscape"
+        orientation="landscape",
     )
     return PDFGenerator(config)
 
@@ -214,9 +219,12 @@ def pdf_generator_landscape() -> PDFGenerator:
 class TestP2P3IntegrationBasic:
     """Test basic P2-P3 integration scenarios."""
 
-    def test_complete_pipeline_standard_config(self, sample_excel_file_path: str,
-                                               excel_processor_factory: Callable[[str], ExcelReader],
-                                               pdf_generator_standard: PDFGenerator) -> None:
+    def test_complete_pipeline_standard_config(
+        self,
+        sample_excel_file_path: str,
+        excel_processor_factory: Callable[[str], ExcelReader],
+        pdf_generator_standard: PDFGenerator,
+    ) -> None:
         """Test complete pipeline with standard configuration."""
         # P2: Process Excel file
         excel_processor = excel_processor_factory(sample_excel_file_path)
@@ -251,51 +259,55 @@ class TestP2P3IntegrationBasic:
         # P3: Generate PDF
         output_path = TEST_OUTPUT_DIR / "standard_integration_test.pdf"
         pdf_generator_standard.create_pdf(
-            sheet_data_list,
-            str(output_path),
-            source_file=sample_excel_file_path
+            sheet_data_list, str(output_path), source_file=sample_excel_file_path
         )
 
         # Verify PDF was created
         assert output_path.exists()
         assert output_path.stat().st_size > 0
 
-    def test_complete_pipeline_ai_optimized(self, sample_excel_file_path: str,
-                                           excel_processor_factory: Callable[[str], ExcelReader],
-                                           pdf_generator_ai_optimized: PDFGenerator) -> None:
+    def test_complete_pipeline_ai_optimized(
+        self,
+        sample_excel_file_path: str,
+        excel_processor_factory: Callable[[str], ExcelReader],
+        pdf_generator_ai_optimized: PDFGenerator,
+    ) -> None:
         """Test complete pipeline with AI optimization enabled."""
         # P2: Process Excel file
         excel_processor = excel_processor_factory(sample_excel_file_path)
         sheet_names = excel_processor.discover_sheets()
-        sheet_data_list = [excel_processor.extract_sheet_data(name) for name in sheet_names]
+        sheet_data_list = [
+            excel_processor.extract_sheet_data(name) for name in sheet_names
+        ]
 
         # P3: Generate PDF with AI optimization
         output_path = TEST_OUTPUT_DIR / "ai_optimized_integration_test.pdf"
         pdf_generator_ai_optimized.create_pdf(
-            sheet_data_list,
-            str(output_path),
-            source_file=sample_excel_file_path
+            sheet_data_list, str(output_path), source_file=sample_excel_file_path
         )
 
         # Verify PDF was created and is larger (due to metadata)
         assert output_path.exists()
         assert output_path.stat().st_size > 0
 
-    def test_pipeline_with_landscape_orientation(self, complex_excel_file_path: str,
-                                               excel_processor_factory: Callable[[str], ExcelReader],
-                                               pdf_generator_landscape: PDFGenerator) -> None:
+    def test_pipeline_with_landscape_orientation(
+        self,
+        complex_excel_file_path: str,
+        excel_processor_factory: Callable[[str], ExcelReader],
+        pdf_generator_landscape: PDFGenerator,
+    ) -> None:
         """Test pipeline with landscape PDF orientation."""
         # P2: Process complex Excel file
         excel_processor = excel_processor_factory(complex_excel_file_path)
         sheet_names = excel_processor.discover_sheets()
-        sheet_data_list = [excel_processor.extract_sheet_data(name) for name in sheet_names]
+        sheet_data_list = [
+            excel_processor.extract_sheet_data(name) for name in sheet_names
+        ]
 
         # P3: Generate landscape PDF
         output_path = TEST_OUTPUT_DIR / "landscape_integration_test.pdf"
         pdf_generator_landscape.create_pdf(
-            sheet_data_list,
-            str(output_path),
-            source_file=complex_excel_file_path
+            sheet_data_list, str(output_path), source_file=complex_excel_file_path
         )
 
         # Verify PDF was created
@@ -306,14 +318,19 @@ class TestP2P3IntegrationBasic:
 class TestP2P3IntegrationEdgeCases:
     """Test edge cases and error scenarios in P2-P3 integration."""
 
-    def test_empty_excel_file_handling(self, empty_excel_file_path: str,
-                                     excel_processor_factory: Callable[[str], ExcelReader],
-                                     pdf_generator_standard: PDFGenerator) -> None:
+    def test_empty_excel_file_handling(
+        self,
+        empty_excel_file_path: str,
+        excel_processor_factory: Callable[[str], ExcelReader],
+        pdf_generator_standard: PDFGenerator,
+    ) -> None:
         """Test handling of empty Excel files."""
         # P2: Process empty Excel file
         excel_processor = excel_processor_factory(empty_excel_file_path)
         sheet_names = excel_processor.discover_sheets()
-        sheet_data_list = [excel_processor.extract_sheet_data(name) for name in sheet_names]
+        sheet_data_list = [
+            excel_processor.extract_sheet_data(name) for name in sheet_names
+        ]
 
         # Should still return list, possibly with empty sheets
         assert isinstance(sheet_data_list, list)
@@ -323,15 +340,16 @@ class TestP2P3IntegrationEdgeCases:
 
         if sheet_data_list:  # Only try PDF generation if we have sheets
             pdf_generator_standard.create_pdf(
-                sheet_data_list,
-                str(output_path),
-                source_file=empty_excel_file_path
+                sheet_data_list, str(output_path), source_file=empty_excel_file_path
             )
             assert output_path.exists()
 
-    def test_large_dataset_performance(self, sample_excel_file_path: str,
-                                       excel_processor_factory: Callable[[str], ExcelReader],
-                                       pdf_generator_standard: PDFGenerator) -> None:
+    def test_large_dataset_performance(
+        self,
+        sample_excel_file_path: str,
+        excel_processor_factory: Callable[[str], ExcelReader],
+        pdf_generator_standard: PDFGenerator,
+    ) -> None:
         """Test performance with large datasets."""
         import time
 
@@ -339,7 +357,9 @@ class TestP2P3IntegrationEdgeCases:
         start_time = time.time()
         excel_processor = excel_processor_factory(sample_excel_file_path)
         sheet_names = excel_processor.discover_sheets()
-        sheet_data_list = [excel_processor.extract_sheet_data(name) for name in sheet_names]
+        sheet_data_list = [
+            excel_processor.extract_sheet_data(name) for name in sheet_names
+        ]
         p2_duration = time.time() - start_time
 
         # Find the large dataset sheet
@@ -356,9 +376,7 @@ class TestP2P3IntegrationEdgeCases:
         start_time = time.time()
         output_path = TEST_OUTPUT_DIR / "large_dataset_test.pdf"
         pdf_generator_standard.create_pdf(
-            sheet_data_list,
-            str(output_path),
-            source_file=sample_excel_file_path
+            sheet_data_list, str(output_path), source_file=sample_excel_file_path
         )
         p3_duration = time.time() - start_time
 
@@ -370,8 +388,11 @@ class TestP2P3IntegrationEdgeCases:
         total_time = p2_duration + p3_duration
         assert total_time < 30.0, f"Performance test failed: {total_time:.2f}s total"
 
-    def test_invalid_file_path_handling(self, excel_processor_factory: Callable[[str], ExcelReader],
-                                       pdf_generator_standard: PDFGenerator) -> None:
+    def test_invalid_file_path_handling(
+        self,
+        excel_processor_factory: Callable[[str], ExcelReader],
+        pdf_generator_standard: PDFGenerator,
+    ) -> None:
         """Test handling of invalid file paths."""
         invalid_path = "/nonexistent/path/file.xlsx"
 
@@ -389,14 +410,19 @@ class TestP2P3IntegrationEdgeCases:
 class TestP2P3DataIntegrity:
     """Test data integrity throughout the P2-P3 pipeline."""
 
-    def test_data_preservation_across_pipeline(self, sample_excel_file_path: str,
-                                             excel_processor_factory: Callable[[str], ExcelReader],
-                                             pdf_generator_standard: PDFGenerator) -> None:
+    def test_data_preservation_across_pipeline(
+        self,
+        sample_excel_file_path: str,
+        excel_processor_factory: Callable[[str], ExcelReader],
+        pdf_generator_standard: PDFGenerator,
+    ) -> None:
         """Test that data is preserved correctly through the pipeline."""
         # P2: Process Excel file
         excel_processor = excel_processor_factory(sample_excel_file_path)
         sheet_names = excel_processor.discover_sheets()
-        sheet_data_list = [excel_processor.extract_sheet_data(name) for name in sheet_names]
+        sheet_data_list = [
+            excel_processor.extract_sheet_data(name) for name in sheet_names
+        ]
 
         # Find specific sheet to verify data integrity
         sales_sheet = None
@@ -423,23 +449,26 @@ class TestP2P3DataIntegrity:
         # P3: Generate PDF
         output_path = TEST_OUTPUT_DIR / "data_integrity_test.pdf"
         pdf_generator_standard.create_pdf(
-            sheet_data_list,
-            str(output_path),
-            source_file=sample_excel_file_path
+            sheet_data_list, str(output_path), source_file=sample_excel_file_path
         )
 
         # Verify PDF creation succeeded (data made it to PDF generation)
         assert output_path.exists()
         assert output_path.stat().st_size > 0
 
-    def test_sheet_structure_preservation(self, complex_excel_file_path: str,
-                                         excel_processor_factory: Callable[[str], ExcelReader],
-                                         pdf_generator_ai_optimized: PDFGenerator) -> None:
+    def test_sheet_structure_preservation(
+        self,
+        complex_excel_file_path: str,
+        excel_processor_factory: Callable[[str], ExcelReader],
+        pdf_generator_ai_optimized: PDFGenerator,
+    ) -> None:
         """Test that sheet structure is preserved through the pipeline."""
         # P2: Process complex Excel file
         excel_processor = excel_processor_factory(complex_excel_file_path)
         sheet_names = excel_processor.discover_sheets()
-        sheet_data_list = [excel_processor.extract_sheet_data(name) for name in sheet_names]
+        sheet_data_list = [
+            excel_processor.extract_sheet_data(name) for name in sheet_names
+        ]
 
         # Verify we have the expected sheets
         sheet_names = [sheet.sheet_name for sheet in sheet_data_list]
@@ -459,9 +488,7 @@ class TestP2P3DataIntegrity:
         # P3: Generate PDF with full features
         output_path = TEST_OUTPUT_DIR / "structure_preservation_test.pdf"
         pdf_generator_ai_optimized.create_pdf(
-            sheet_data_list,
-            str(output_path),
-            source_file=complex_excel_file_path
+            sheet_data_list, str(output_path), source_file=complex_excel_file_path
         )
 
         # Verify PDF was created successfully
@@ -472,19 +499,25 @@ class TestP2P3DataIntegrity:
 class TestP2P3ConfigurationMatrix:
     """Test various configuration combinations."""
 
-    @pytest.mark.parametrize("optimize_ai,include_bookmarks,include_metadata", [
-        (True, True, True),
-        (True, False, True),
-        (False, True, False),
-        (False, False, False),
-        (True, True, False),
-        (False, True, True),
-    ])
-    def test_configuration_combinations(self, sample_excel_file_path: str,
-                                        excel_processor_factory: Callable[[str], ExcelReader],
-                                        optimize_ai: bool,
-                                        include_bookmarks: bool,
-                                        include_metadata: bool) -> None:
+    @pytest.mark.parametrize(
+        "optimize_ai,include_bookmarks,include_metadata",
+        [
+            (True, True, True),
+            (True, False, True),
+            (False, True, False),
+            (False, False, False),
+            (True, True, False),
+            (False, True, True),
+        ],
+    )
+    def test_configuration_combinations(
+        self,
+        sample_excel_file_path: str,
+        excel_processor_factory: Callable[[str], ExcelReader],
+        optimize_ai: bool,
+        include_bookmarks: bool,
+        include_metadata: bool,
+    ) -> None:
         """Test various configuration combinations."""
         # Create configuration
         config = PDFConfig(
@@ -492,22 +525,25 @@ class TestP2P3ConfigurationMatrix:
             include_bookmarks=include_bookmarks,
             include_metadata=include_metadata,
             page_size="A4",
-            orientation="portrait"
+            orientation="portrait",
         )
 
         # P2: Process Excel file
         excel_processor = excel_processor_factory(sample_excel_file_path)
         sheet_names = excel_processor.discover_sheets()
-        sheet_data_list = [excel_processor.extract_sheet_data(name) for name in sheet_names]
+        sheet_data_list = [
+            excel_processor.extract_sheet_data(name) for name in sheet_names
+        ]
 
         # P3: Generate PDF with specific configuration
         pdf_generator = PDFGenerator(config)
-        output_path = TEST_OUTPUT_DIR / f"config_test_{optimize_ai}_{include_bookmarks}_{include_metadata}.pdf"
+        output_path = (
+            TEST_OUTPUT_DIR
+            / f"config_test_{optimize_ai}_{include_bookmarks}_{include_metadata}.pdf"
+        )
 
         pdf_generator.create_pdf(
-            sheet_data_list,
-            str(output_path),
-            source_file=sample_excel_file_path
+            sheet_data_list, str(output_path), source_file=sample_excel_file_path
         )
 
         # Verify PDF was created
@@ -521,20 +557,28 @@ class TestP2P3ConfigurationMatrix:
 class TestP2P3ErrorHandling:
     """Test error handling and recovery in the pipeline."""
 
-    def test_p2_failure_propagation(self, excel_processor_factory: Callable[[str], ExcelReader],
-                                    pdf_generator_standard: PDFGenerator) -> None:
+    def test_p2_failure_propagation(
+        self,
+        excel_processor_factory: Callable[[str], ExcelReader],
+        pdf_generator_standard: PDFGenerator,
+    ) -> None:
         """Test that P2 failures are properly handled."""
         # Test with completely invalid file
         with pytest.raises((ExcelReaderError, FileNotFoundError)):
             excel_processor_factory("/invalid/nonexistent.xlsx")
 
-    def test_p3_graceful_degradation(self, sample_excel_file_path: str,
-                                     excel_processor_factory: Callable[[str], ExcelReader]) -> None:
+    def test_p3_graceful_degradation(
+        self,
+        sample_excel_file_path: str,
+        excel_processor_factory: Callable[[str], ExcelReader],
+    ) -> None:
         """Test P3 graceful degradation with problematic data."""
         # Process Excel file normally
         excel_processor = excel_processor_factory(sample_excel_file_path)
         sheet_names = excel_processor.discover_sheets()
-        sheet_data_list = [excel_processor.extract_sheet_data(name) for name in sheet_names]
+        sheet_data_list = [
+            excel_processor.extract_sheet_data(name) for name in sheet_names
+        ]
 
         # Create PDF generator with minimal configuration
         config = PDFConfig(
@@ -542,30 +586,30 @@ class TestP2P3ErrorHandling:
             include_bookmarks=False,
             include_metadata=False,
             page_size="A4",
-            orientation="portrait"
+            orientation="portrait",
         )
         pdf_generator = PDFGenerator(config)
 
         # Should still work even with minimal features
         output_path = TEST_OUTPUT_DIR / "graceful_degradation_test.pdf"
         pdf_generator.create_pdf(
-            sheet_data_list,
-            str(output_path),
-            source_file=sample_excel_file_path
+            sheet_data_list, str(output_path), source_file=sample_excel_file_path
         )
 
         assert output_path.exists()
         assert output_path.stat().st_size > 0
 
 
-@pytest.mark.parametrize("excel_file_path", [
-    "sample_excel_file_path",
-    "complex_excel_file_path",
-    "empty_excel_file_path"
-])
-def test_parametrized_integration_tests(request: SubRequest, excel_file_path: str,
-                                      excel_processor_factory: Callable[[str], ExcelReader],
-                                      pdf_generator_standard: PDFGenerator) -> None:
+@pytest.mark.parametrize(
+    "excel_file_path",
+    ["sample_excel_file_path", "complex_excel_file_path", "empty_excel_file_path"],
+)
+def test_parametrized_integration_tests(
+    request: SubRequest,
+    excel_file_path: str,
+    excel_processor_factory: Callable[[str], ExcelReader],
+    pdf_generator_standard: PDFGenerator,
+) -> None:
     """Parametrized integration test using different Excel files."""
     # Get the actual file path from the fixture
     file_path = request.getfixturevalue(excel_file_path)
@@ -582,9 +626,7 @@ def test_parametrized_integration_tests(request: SubRequest, excel_file_path: st
     # P3: Generate PDF
     output_path = TEST_OUTPUT_DIR / f"parametrized_{Path(file_path).stem}.pdf"
     pdf_generator_standard.create_pdf(
-        sheet_data_list,
-        str(output_path),
-        source_file=file_path
+        sheet_data_list, str(output_path), source_file=file_path
     )
 
     # Verify PDF was created

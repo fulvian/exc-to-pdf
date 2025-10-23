@@ -11,9 +11,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.config.pdf_config import PDFConfig
-from src.pdf_generator import PDFGenerator
-from src.exceptions import PDFGenerationException
+from exc_to_pdf.config.pdf_config import PDFConfig
+from exc_to_pdf.pdf_generator import PDFGenerator
+from exc_to_pdf.exceptions import PDFGenerationException
 
 
 class TestPDFGenerator:
@@ -35,7 +35,7 @@ class TestPDFGenerator:
             optimize_for_notebooklm=False,
             include_bookmarks=False,
             include_metadata=False,
-            max_table_rows_per_page=25
+            max_table_rows_per_page=25,
         )
         generator = PDFGenerator(config)
 
@@ -52,7 +52,7 @@ class TestPDFGenerator:
         with pytest.raises(PDFGenerationException, match="No sheet data provided"):
             generator.create_pdf([], "output.pdf")
 
-    @patch('src.pdf_generator.SimpleDocTemplate')
+    @patch("src.pdf_generator.SimpleDocTemplate")
     def test_create_pdf_basic_success(self, mock_doc_template: Mock) -> None:
         """Test successful PDF creation with basic data."""
         # Setup mock
@@ -107,7 +107,11 @@ class TestPDFGenerator:
         # Create mock sheet with raw data (no tables)
         mock_sheet = Mock()
         mock_sheet.tables = []  # No detected tables
-        mock_sheet.raw_data = [["Header1", "Header2"], ["Data1", "Data2"], ["Data3", "Data4"]]
+        mock_sheet.raw_data = [
+            ["Header1", "Header2"],
+            ["Data1", "Data2"],
+            ["Data3", "Data4"],
+        ]
         mock_sheet.sheet_name = "Sheet1"
 
         tables = generator._process_sheet(mock_sheet)
@@ -241,14 +245,14 @@ class TestPDFGenerator:
             "title": "Test Document",
             "author": "Test Author",
             "subject": "Test Subject",
-            "creator": "Test Creator"
+            "creator": "Test Creator",
         }
 
         # Should not raise an exception
         doc_config = generator._build_document(tables_by_sheet, bookmarks, metadata)
         assert isinstance(doc_config, dict)
-        assert doc_config['title'] == "Test Document"
-        assert doc_config['author'] == "Test Author"
+        assert doc_config["title"] == "Test Document"
+        assert doc_config["author"] == "Test Author"
 
     def test_build_document_without_metadata(self) -> None:
         """Test document building without metadata."""
@@ -261,7 +265,7 @@ class TestPDFGenerator:
         # Should not raise an exception
         doc_config = generator._build_document(tables_by_sheet, bookmarks, metadata)
         assert isinstance(doc_config, dict)
-        assert doc_config['title'] == 'Excel Data Analysis'  # Default value
+        assert doc_config["title"] == "Excel Data Analysis"  # Default value
 
     def test_create_story_single_sheet(self) -> None:
         """Test story creation for single sheet."""
@@ -274,6 +278,7 @@ class TestPDFGenerator:
         assert len(story) >= 2  # At least 2 tables
         # Should not contain page breaks for single sheet
         from reportlab.platypus import PageBreak
+
         page_breaks = [item for item in story if isinstance(item, PageBreak)]
         assert len(page_breaks) == 0
 
@@ -281,16 +286,14 @@ class TestPDFGenerator:
         """Test story creation for multiple sheets."""
         generator = PDFGenerator()
 
-        tables_by_sheet = {
-            "Sheet1": [Mock()],
-            "Sheet2": [Mock()]
-        }
+        tables_by_sheet = {"Sheet1": [Mock()], "Sheet2": [Mock()]}
 
         story = generator._create_story(tables_by_sheet)
 
         assert len(story) >= 2  # At least 2 tables
         # Should contain page breaks between sheets
         from reportlab.platypus import PageBreak
+
         page_breaks = [item for item in story if isinstance(item, PageBreak)]
         assert len(page_breaks) == 1  # One page break between 2 sheets
 
@@ -304,7 +307,9 @@ class TestPDFGenerator:
         large_table = Mock()
 
         # Mock _estimate_table_rows to return specific values
-        generator._estimate_table_rows = Mock(side_effect=[25, 100])  # 25 rows, 100 rows
+        generator._estimate_table_rows = Mock(
+            side_effect=[25, 100]
+        )  # 25 rows, 100 rows
 
         tables = [small_table, large_table]
         pages = generator._estimate_pages_for_tables(tables)
@@ -373,9 +378,7 @@ class TestPDFGenerator:
     def test_get_generation_statistics(self) -> None:
         """Test generation statistics."""
         config = PDFConfig(
-            page_size="A3",
-            orientation="landscape",
-            max_table_rows_per_page=75
+            page_size="A3", orientation="landscape", max_table_rows_per_page=75
         )
         generator = PDFGenerator(config)
 
@@ -431,7 +434,7 @@ class TestPDFGenerator:
         config = PDFConfig(
             include_bookmarks=True,
             optimize_for_notebooklm=False,
-            include_metadata=False
+            include_metadata=False,
         )
         generator = PDFGenerator(config)
 
@@ -467,7 +470,7 @@ class TestPDFGenerator:
             mock_table_info.data = [
                 ["Product", "Q1", "Q2", "Q3"],
                 ["Product A", "100", "120", "130"],
-                ["Product B", "80", "90", "95"]
+                ["Product B", "80", "90", "95"],
             ]
             mock_table_info.headers = ["Product", "Q1 Sales", "Q2 Sales", "Q3 Sales"]
             mock_table_info.row_count = 3  # Header + 2 data rows
@@ -481,7 +484,7 @@ class TestPDFGenerator:
 
             # Mock the table renderer and SimpleDocTemplate to avoid actual file creation
             generator.table_renderer.render_table = Mock(return_value=Mock())
-            with patch('src.pdf_generator.SimpleDocTemplate') as mock_doc_template:
+            with patch("src.pdf_generator.SimpleDocTemplate") as mock_doc_template:
                 mock_doc = Mock()
                 mock_doc_template.return_value = mock_doc
                 mock_doc.build.return_value = None
@@ -510,7 +513,9 @@ class TestPDFGenerator:
         invalid_sheet.has_data = True
 
         # Mock the table renderer to raise an exception
-        generator.table_renderer.render_table = Mock(side_effect=Exception("Table rendering failed"))
+        generator.table_renderer.render_table = Mock(
+            side_effect=Exception("Table rendering failed")
+        )
 
         with pytest.raises(PDFGenerationException):
             generator._process_sheet(invalid_sheet)
@@ -568,7 +573,7 @@ class TestPDFGenerator:
             max_table_rows_per_page=25,
             enable_table_splitting=True,
             font_size=12,
-            header_font_size=14
+            header_font_size=14,
         )
         generator = PDFGenerator(config)
 

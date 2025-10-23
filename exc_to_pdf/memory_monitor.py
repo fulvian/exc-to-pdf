@@ -22,6 +22,7 @@ logger = structlog.get_logger()
 @dataclass
 class MemoryStats:
     """Memory usage statistics."""
+
     current_mb: float
     peak_mb: float
     available_mb: float
@@ -32,6 +33,7 @@ class MemoryStats:
 @dataclass
 class ResourceLimits:
     """Resource usage limits."""
+
     max_memory_mb: int
     max_cpu_percent: float = 80.0
     gc_threshold_mb: int = 100  # Force GC when memory increases by this amount
@@ -89,7 +91,7 @@ class MemoryMonitor:
                 peak_mb=self._peak_memory,
                 available_mb=system_available_mb,
                 percent_used=system_percent,
-                process_mb=process_mb
+                process_mb=process_mb,
             )
 
         except Exception as e:
@@ -99,7 +101,7 @@ class MemoryMonitor:
                 peak_mb=self._peak_memory,
                 available_mb=0.0,
                 percent_used=0.0,
-                process_mb=0.0
+                process_mb=0.0,
             )
 
     def check_memory_limits(self) -> bool:
@@ -116,16 +118,13 @@ class MemoryMonitor:
             logger.warning(
                 "Memory limit exceeded",
                 current_mb=stats.current_mb,
-                limit_mb=self.limits.max_memory_mb
+                limit_mb=self.limits.max_memory_mb,
             )
             return False
 
         # Check system memory availability
         if stats.available_mb < 100:  # Leave 100MB system buffer
-            logger.warning(
-                "Low system memory",
-                available_mb=stats.available_mb
-            )
+            logger.warning("Low system memory", available_mb=stats.available_mb)
             return False
 
         return True
@@ -145,7 +144,7 @@ class MemoryMonitor:
             logger.debug(
                 "Garbage collection completed",
                 objects_collected=collected,
-                memory_mb=stats.current_mb
+                memory_mb=stats.current_mb,
             )
 
             self._last_gc_memory = stats.current_mb
@@ -168,9 +167,7 @@ class MemoryMonitor:
 
         self._monitoring = True
         self._monitor_thread = threading.Thread(
-            target=self._monitor_loop,
-            args=(interval,),
-            daemon=True
+            target=self._monitor_loop, args=(interval,), daemon=True
         )
         self._monitor_thread.start()
 
@@ -205,7 +202,9 @@ class MemoryMonitor:
                     break
 
                 # Auto garbage collection if needed
-                if (stats.current_mb - self._last_gc_memory) > self.limits.gc_threshold_mb:
+                if (
+                    stats.current_mb - self._last_gc_memory
+                ) > self.limits.gc_threshold_mb:
                     self.force_garbage_collection()
 
                 # Log memory usage periodically
@@ -213,7 +212,7 @@ class MemoryMonitor:
                     "Memory usage",
                     current_mb=stats.current_mb,
                     peak_mb=stats.peak_memory,
-                    percent_used=stats.percent_used
+                    percent_used=stats.percent_used,
                 )
 
                 time.sleep(interval)
@@ -230,12 +229,12 @@ class MemoryMonitor:
                 logger.debug("Memory limit callback triggered", callback=name)
             except Exception as e:
                 logger.warning(
-                    "Memory limit callback failed",
-                    callback=name,
-                    error=str(e)
+                    "Memory limit callback failed", callback=name, error=str(e)
                 )
 
-    def add_memory_limit_callback(self, name: str, callback: Callable[[], None]) -> None:
+    def add_memory_limit_callback(
+        self, name: str, callback: Callable[[], None]
+    ) -> None:
         """
         Add callback for memory limit exceeded events.
 
@@ -262,7 +261,12 @@ class MemoryMonitor:
         self.start_monitoring()
         return self
 
-    def __exit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[object]) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[type],
+        exc_val: Optional[Exception],
+        exc_tb: Optional[object],
+    ) -> None:
         """Context manager exit."""
         self.stop_monitoring()
 
@@ -280,7 +284,7 @@ def get_system_memory_info() -> Dict[str, float]:
             "total_mb": memory.total / 1024 / 1024,
             "available_mb": memory.available / 1024 / 1024,
             "used_mb": memory.used / 1024 / 1024,
-            "percent_used": memory.percent
+            "percent_used": memory.percent,
         }
     except Exception as e:
         logger.warning("Failed to get system memory info", error=str(e))
@@ -300,6 +304,7 @@ def optimize_gc_settings() -> None:
         except AttributeError:
             # Fallback if isEnabledFor is not available
             import structlog
+
             if structlog.get_logger().isEnabledFor(logging.DEBUG):
                 gc.set_debug(gc.DEBUG_STATS)
 

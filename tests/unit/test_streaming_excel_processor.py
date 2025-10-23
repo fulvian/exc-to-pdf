@@ -15,19 +15,19 @@ from typing import Any, Dict, List
 import pytest
 from openpyxl import Workbook
 
-from src.config.excel_config import ExcelConfig
-from src.streaming_excel_processor import (
+from exc_to_pdf.config.excel_config import ExcelConfig
+from exc_to_pdf.streaming_excel_processor import (
     StreamingExcelProcessor,
     ChunkIterator,
     ChunkInfo,
-    ProcessingStats
+    ProcessingStats,
 )
-from src.exceptions import (
+from exc_to_pdf.exceptions import (
     WorkbookInitializationException,
     WorksheetNotFoundException,
-    DataExtractionException
+    DataExtractionException,
 )
-from src.excel_processor import SheetData
+from exc_to_pdf.excel_processor import SheetData
 
 
 @pytest.fixture
@@ -48,13 +48,15 @@ def large_excel_file(temp_dir: Path) -> str:
 
     # Add 50,000 rows of data
     for i in range(1, 50001):
-        ws.append([
-            f"ID{i:06d}",
-            f"Name_{i}",
-            i * 1.5,
-            f"Category_{i % 10}",
-            f"Description for item {i} with some additional text"
-        ])
+        ws.append(
+            [
+                f"ID{i:06d}",
+                f"Name_{i}",
+                i * 1.5,
+                f"Category_{i % 10}",
+                f"Description for item {i} with some additional text",
+            ]
+        )
 
     wb.save(excel_path)
     return str(excel_path)
@@ -77,11 +79,13 @@ def multi_sheet_excel_file(temp_dir: Path) -> str:
 
         # Add 1000 rows per sheet
         for i in range(1, 1001):
-            ws.append([
-                f"{sheet_num}_{i:04d}",
-                i * sheet_num,
-                f"Item {i} in sheet {sheet_num}"
-            ])
+            ws.append(
+                [
+                    f"{sheet_num}_{i:04d}",
+                    i * sheet_num,
+                    f"Item {i} in sheet {sheet_num}",
+                ]
+            )
 
     wb.save(excel_path)
     return str(excel_path)
@@ -99,12 +103,14 @@ def performance_config() -> ExcelConfig:
         enable_progress=True,
         progress_interval=0.1,  # Fast updates for testing
         enable_caching=True,
-        cache_size_mb=10
+        cache_size_mb=10,
     )
 
 
 @pytest.fixture
-def streaming_processor(large_excel_file: str, performance_config: ExcelConfig) -> StreamingExcelProcessor:
+def streaming_processor(
+    large_excel_file: str, performance_config: ExcelConfig
+) -> StreamingExcelProcessor:
     """Create streaming processor for testing."""
     return StreamingExcelProcessor(large_excel_file, performance_config)
 
@@ -112,17 +118,16 @@ def streaming_processor(large_excel_file: str, performance_config: ExcelConfig) 
 class TestChunkIterator:
     """Test cases for ChunkIterator functionality."""
 
-    def test_chunk_iterator_initialization(self, streaming_processor: StreamingExcelProcessor) -> None:
+    def test_chunk_iterator_initialization(
+        self, streaming_processor: StreamingExcelProcessor
+    ) -> None:
         """Test ChunkIterator initialization."""
         with streaming_processor:
             streaming_processor._initialize_workbook()
             worksheet = streaming_processor.workbook.active
 
             iterator = ChunkIterator(
-                worksheet=worksheet,
-                chunk_size=100,
-                max_row=500,
-                values_only=True
+                worksheet=worksheet, chunk_size=100, max_row=500, values_only=True
             )
 
             assert iterator.chunk_size == 100
@@ -130,16 +135,16 @@ class TestChunkIterator:
             assert iterator.values_only is True
             assert iterator._current_row == 1
 
-    def test_chunk_iterator_estimation(self, streaming_processor: StreamingExcelProcessor) -> None:
+    def test_chunk_iterator_estimation(
+        self, streaming_processor: StreamingExcelProcessor
+    ) -> None:
         """Test chunk count estimation."""
         with streaming_processor:
             streaming_processor._initialize_workbook()
             worksheet = streaming_processor.workbook.active
 
             iterator = ChunkIterator(
-                worksheet=worksheet,
-                chunk_size=1000,
-                values_only=True
+                worksheet=worksheet, chunk_size=1000, values_only=True
             )
 
             total_chunks = iterator.estimate_total_chunks()
@@ -147,16 +152,16 @@ class TestChunkIterator:
             expected_chunks = (50001 + 1000 - 1) // 1000  # Ceiling division
             assert total_chunks == expected_chunks
 
-    def test_chunk_iteration(self, streaming_processor: StreamingExcelProcessor) -> None:
+    def test_chunk_iteration(
+        self, streaming_processor: StreamingExcelProcessor
+    ) -> None:
         """Test chunk iteration functionality."""
         with streaming_processor:
             streaming_processor._initialize_workbook()
             worksheet = streaming_processor.workbook.active
 
             iterator = ChunkIterator(
-                worksheet=worksheet,
-                chunk_size=1000,
-                values_only=True
+                worksheet=worksheet, chunk_size=1000, values_only=True
             )
 
             chunks_processed = 0
@@ -186,7 +191,9 @@ class TestChunkIterator:
 class TestStreamingExcelProcessor:
     """Test cases for StreamingExcelProcessor functionality."""
 
-    def test_processor_initialization(self, large_excel_file: str, performance_config: ExcelConfig) -> None:
+    def test_processor_initialization(
+        self, large_excel_file: str, performance_config: ExcelConfig
+    ) -> None:
         """Test processor initialization."""
         processor = StreamingExcelProcessor(large_excel_file, performance_config)
 
@@ -195,7 +202,9 @@ class TestStreamingExcelProcessor:
         assert processor.workbook is None
         assert processor.memory_monitor is None
 
-    def test_file_validation_success(self, large_excel_file: str, performance_config: ExcelConfig) -> None:
+    def test_file_validation_success(
+        self, large_excel_file: str, performance_config: ExcelConfig
+    ) -> None:
         """Test successful file validation."""
         processor = StreamingExcelProcessor(large_excel_file, performance_config)
         # Should not raise any exceptions
@@ -206,7 +215,9 @@ class TestStreamingExcelProcessor:
         with pytest.raises(FileNotFoundError):
             StreamingExcelProcessor("/nonexistent/file.xlsx", performance_config)
 
-    def test_file_validation_invalid_extension(self, temp_dir: Path, performance_config: ExcelConfig) -> None:
+    def test_file_validation_invalid_extension(
+        self, temp_dir: Path, performance_config: ExcelConfig
+    ) -> None:
         """Test file validation with invalid extension."""
         invalid_file = temp_dir / "test.txt"
         invalid_file.write_text("Not an Excel file")
@@ -214,7 +225,9 @@ class TestStreamingExcelProcessor:
         with pytest.raises(ValueError, match="Invalid file extension"):
             StreamingExcelProcessor(str(invalid_file), performance_config)
 
-    def test_file_validation_too_large(self, temp_dir: Path, performance_config: ExcelConfig) -> None:
+    def test_file_validation_too_large(
+        self, temp_dir: Path, performance_config: ExcelConfig
+    ) -> None:
         """Test file validation with file too large."""
         # Create a config with very small file size limit
         small_config = ExcelConfig(max_file_size_mb=1)
@@ -230,15 +243,22 @@ class TestStreamingExcelProcessor:
         with pytest.raises(ValueError, match="File too large"):
             StreamingExcelProcessor(str(large_file), small_config)
 
-    def test_workbook_initialization(self, streaming_processor: StreamingExcelProcessor) -> None:
+    def test_workbook_initialization(
+        self, streaming_processor: StreamingExcelProcessor
+    ) -> None:
         """Test workbook initialization."""
         streaming_processor._initialize_workbook()
 
         assert streaming_processor.workbook is not None
         assert streaming_processor.memory_monitor is not None
-        assert streaming_processor.memory_monitor.limits.max_memory_mb == streaming_processor.config.memory_limit_mb
+        assert (
+            streaming_processor.memory_monitor.limits.max_memory_mb
+            == streaming_processor.config.memory_limit_mb
+        )
 
-    def test_context_manager(self, large_excel_file: str, performance_config: ExcelConfig) -> None:
+    def test_context_manager(
+        self, large_excel_file: str, performance_config: ExcelConfig
+    ) -> None:
         """Test context manager functionality."""
         with StreamingExcelProcessor(large_excel_file, performance_config) as processor:
             assert processor.workbook is not None
@@ -248,7 +268,9 @@ class TestStreamingExcelProcessor:
         assert processor.workbook is None
         assert processor.memory_monitor is None
 
-    def test_discover_sheets(self, multi_sheet_excel_file: str, performance_config: ExcelConfig) -> None:
+    def test_discover_sheets(
+        self, multi_sheet_excel_file: str, performance_config: ExcelConfig
+    ) -> None:
         """Test sheet discovery."""
         processor = StreamingExcelProcessor(multi_sheet_excel_file, performance_config)
 
@@ -260,13 +282,17 @@ class TestStreamingExcelProcessor:
         assert "Sheet_1" in sheet_names
         assert "Sheet_5" in sheet_names
 
-    def test_process_sheet_chunked(self, streaming_processor: StreamingExcelProcessor) -> None:
+    def test_process_sheet_chunked(
+        self, streaming_processor: StreamingExcelProcessor
+    ) -> None:
         """Test chunked sheet processing."""
         with streaming_processor:
             chunks_processed = 0
             total_rows = 0
 
-            for chunk_data, chunk_info in streaming_processor.process_sheet_chunked("Large Data"):
+            for chunk_data, chunk_info in streaming_processor.process_sheet_chunked(
+                "Large Data"
+            ):
                 chunks_processed += 1
                 total_rows += len(chunk_data)
 
@@ -284,7 +310,9 @@ class TestStreamingExcelProcessor:
         assert stats.total_chunks_processed == chunks_processed
         assert stats.total_rows_processed == total_rows
 
-    def test_extract_sheet_data_streaming(self, streaming_processor: StreamingExcelProcessor) -> None:
+    def test_extract_sheet_data_streaming(
+        self, streaming_processor: StreamingExcelProcessor
+    ) -> None:
         """Test streaming sheet data extraction."""
         with streaming_processor:
             sheet_data = streaming_processor.extract_sheet_data_streaming("Large Data")
@@ -307,7 +335,9 @@ class TestStreamingExcelProcessor:
         assert processing_stats["streaming_mode"] is True
         assert processing_stats["chunks_processed"] > 0
 
-    def test_process_all_sheets_parallel(self, multi_sheet_excel_file: str, performance_config: ExcelConfig) -> None:
+    def test_process_all_sheets_parallel(
+        self, multi_sheet_excel_file: str, performance_config: ExcelConfig
+    ) -> None:
         """Test parallel processing of multiple sheets."""
         processor = StreamingExcelProcessor(multi_sheet_excel_file, performance_config)
 
@@ -333,11 +363,13 @@ class TestStreamingExcelProcessor:
         assert stats.processing_time_seconds > 0
         assert stats.processing_time_seconds == end_time - start_time
 
-    def test_process_all_sheets_sequential(self, multi_sheet_excel_file: str, performance_config: ExcelConfig) -> None:
+    def test_process_all_sheets_sequential(
+        self, multi_sheet_excel_file: str, performance_config: ExcelConfig
+    ) -> None:
         """Test sequential processing of multiple sheets."""
         # Disable parallel processing for this test
         sequential_config = ExcelConfig(
-            **{**performance_config.__dict__, 'parallel_processing': False}
+            **{**performance_config.__dict__, "parallel_processing": False}
         )
 
         processor = StreamingExcelProcessor(multi_sheet_excel_file, sequential_config)
@@ -350,7 +382,9 @@ class TestStreamingExcelProcessor:
         sheet_names = [data.sheet_name for data in sheet_data_list]
         assert all(name.startswith("Sheet_") for name in sheet_names)
 
-    def test_memory_monitoring(self, large_excel_file: str, performance_config: ExcelConfig) -> None:
+    def test_memory_monitoring(
+        self, large_excel_file: str, performance_config: ExcelConfig
+    ) -> None:
         """Test memory monitoring functionality."""
         processor = StreamingExcelProcessor(large_excel_file, performance_config)
 
@@ -401,13 +435,17 @@ class TestStreamingExcelProcessor:
                 # Test only first chunk
                 break
 
-    def test_error_handling_invalid_sheet(self, streaming_processor: StreamingExcelProcessor) -> None:
+    def test_error_handling_invalid_sheet(
+        self, streaming_processor: StreamingExcelProcessor
+    ) -> None:
         """Test error handling for invalid sheet names."""
         with streaming_processor:
             with pytest.raises(WorksheetNotFoundException):
                 streaming_processor.extract_sheet_data_streaming("NonExistentSheet")
 
-    def test_detect_tables_streaming(self, streaming_processor: StreamingExcelProcessor) -> None:
+    def test_detect_tables_streaming(
+        self, streaming_processor: StreamingExcelProcessor
+    ) -> None:
         """Test table detection in streaming mode."""
         with streaming_processor:
             tables = streaming_processor.detect_tables_streaming("Large Data")
@@ -415,13 +453,17 @@ class TestStreamingExcelProcessor:
             # Should return a list (even if empty)
             assert isinstance(tables, list)
 
-    def test_processing_stats(self, streaming_processor: StreamingExcelProcessor) -> None:
+    def test_processing_stats(
+        self, streaming_processor: StreamingExcelProcessor
+    ) -> None:
         """Test processing statistics tracking."""
         initial_stats = streaming_processor.get_processing_stats()
 
         with streaming_processor:
             # Process some data
-            for chunk_data, chunk_info in streaming_processor.process_sheet_chunked("Large Data"):
+            for chunk_data, chunk_info in streaming_processor.process_sheet_chunked(
+                "Large Data"
+            ):
                 if chunk_info.chunk_index >= 2:  # Process only a few chunks
                     break
 
@@ -431,7 +473,9 @@ class TestStreamingExcelProcessor:
         assert final_stats.total_rows_processed > initial_stats.total_rows_processed
         assert final_stats.total_chunks_processed > initial_stats.total_chunks_processed
 
-    def test_resource_cleanup(self, large_excel_file: str, performance_config: ExcelConfig) -> None:
+    def test_resource_cleanup(
+        self, large_excel_file: str, performance_config: ExcelConfig
+    ) -> None:
         """Test proper resource cleanup."""
         processor = StreamingExcelProcessor(large_excel_file, performance_config)
 
@@ -470,27 +514,30 @@ class TestPerformanceOptimizations:
         # Small file should not trigger streaming even if enabled
         assert processor._should_use_streaming() is False
 
-    def test_parallel_vs_sequential_performance(self, multi_sheet_excel_file: str) -> None:
+    def test_parallel_vs_sequential_performance(
+        self, multi_sheet_excel_file: str
+    ) -> None:
         """Test performance difference between parallel and sequential processing."""
         config_parallel = ExcelConfig(
-            parallel_processing=True,
-            max_workers=4,
-            streaming_enabled=True
+            parallel_processing=True, max_workers=4, streaming_enabled=True
         )
         config_sequential = ExcelConfig(
-            parallel_processing=False,
-            streaming_enabled=True
+            parallel_processing=False, streaming_enabled=True
         )
 
         # Test parallel processing
-        processor_parallel = StreamingExcelProcessor(multi_sheet_excel_file, config_parallel)
+        processor_parallel = StreamingExcelProcessor(
+            multi_sheet_excel_file, config_parallel
+        )
         start_time = time.time()
         with processor_parallel:
             result_parallel = processor_parallel.process_all_sheets_parallel()
         parallel_time = time.time() - start_time
 
         # Test sequential processing
-        processor_sequential = StreamingExcelProcessor(multi_sheet_excel_file, config_sequential)
+        processor_sequential = StreamingExcelProcessor(
+            multi_sheet_excel_file, config_sequential
+        )
         start_time = time.time()
         with processor_sequential:
             result_sequential = processor_sequential.process_all_sheets_sequential()
@@ -525,4 +572,6 @@ class TestPerformanceOptimizations:
         memory_increase = final_memory - initial_memory
 
         # Memory increase should be reasonable (less than 100MB for this test)
-        assert memory_increase < 100, f"Memory increased by {memory_increase}MB, expected < 100MB"
+        assert (
+            memory_increase < 100
+        ), f"Memory increased by {memory_increase}MB, expected < 100MB"

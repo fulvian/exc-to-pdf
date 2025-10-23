@@ -19,6 +19,7 @@ logger = structlog.get_logger()
 
 class ProgressStatus(Enum):
     """Progress operation status."""
+
     PENDING = "pending"
     RUNNING = "running"
     PAUSED = "paused"
@@ -30,6 +31,7 @@ class ProgressStatus(Enum):
 @dataclass
 class ProgressUpdate:
     """Progress update information."""
+
     current: int
     total: int
     percentage: float
@@ -43,6 +45,7 @@ class ProgressUpdate:
 @dataclass
 class OperationStats:
     """Operation performance statistics."""
+
     items_processed: int = 0
     items_total: int = 0
     start_time: Optional[float] = None
@@ -65,7 +68,7 @@ class ProgressTracker:
         total_items: int,
         update_interval: float = 1.0,
         show_progress: bool = True,
-        custom_formatter: Optional[Callable[[ProgressUpdate], str]] = None
+        custom_formatter: Optional[Callable[[ProgressUpdate], str]] = None,
     ):
         """
         Initialize progress tracker.
@@ -91,7 +94,7 @@ class ProgressTracker:
         logger.info(
             "Progress tracker initialized",
             operation=operation_name,
-            total_items=total_items
+            total_items=total_items,
         )
 
     def start(self) -> None:
@@ -104,16 +107,13 @@ class ProgressTracker:
         logger.info(
             "Operation started",
             operation=self.operation_name,
-            total_items=self.total_items
+            total_items=self.total_items,
         )
 
         self._update_progress(0, "Starting operation")
 
     def update(
-        self,
-        current: int,
-        message: Optional[str] = None,
-        force_update: bool = False
+        self, current: int, message: Optional[str] = None, force_update: bool = False
     ) -> None:
         """
         Update progress with current item count.
@@ -127,7 +127,7 @@ class ProgressTracker:
             logger.warning(
                 "Update called on non-running tracker",
                 status=self.status.value,
-                operation=self.operation_name
+                operation=self.operation_name,
             )
             return
 
@@ -145,11 +145,7 @@ class ProgressTracker:
 
         self._update_progress(current, message)
 
-    def increment(
-        self,
-        increment: int = 1,
-        message: Optional[str] = None
-    ) -> None:
+    def increment(self, increment: int = 1, message: Optional[str] = None) -> None:
         """
         Increment progress by specified amount.
 
@@ -178,7 +174,7 @@ class ProgressTracker:
             operation=self.operation_name,
             items_processed=self.stats.items_processed,
             elapsed_seconds=elapsed,
-            rate=self.stats.items_processed / elapsed if elapsed > 0 else 0
+            rate=self.stats.items_processed / elapsed if elapsed > 0 else 0,
         )
 
         self._update_progress(self.total_items, message or "Operation completed")
@@ -197,7 +193,7 @@ class ProgressTracker:
             "Operation failed",
             operation=self.operation_name,
             items_processed=self.stats.items_processed,
-            error=error_message
+            error=error_message,
         )
 
         self._update_progress(self.stats.items_processed, f"Failed: {error_message}")
@@ -215,10 +211,12 @@ class ProgressTracker:
         logger.info(
             "Operation cancelled",
             operation=self.operation_name,
-            items_processed=self.stats.items_processed
+            items_processed=self.stats.items_processed,
         )
 
-        self._update_progress(self.stats.items_processed, message or "Operation cancelled")
+        self._update_progress(
+            self.stats.items_processed, message or "Operation cancelled"
+        )
 
     def pause(self, message: Optional[str] = None) -> None:
         """
@@ -238,7 +236,9 @@ class ProgressTracker:
             message: Optional resume message
         """
         self.status = ProgressStatus.RUNNING
-        self._update_progress(self.stats.items_processed, message or "Operation resumed")
+        self._update_progress(
+            self.stats.items_processed, message or "Operation resumed"
+        )
 
     def _update_progress(self, current: int, message: Optional[str] = None) -> None:
         """
@@ -271,11 +271,14 @@ class ProgressTracker:
             eta_seconds=eta_seconds,
             elapsed_seconds=elapsed_seconds,
             status=self.status,
-            message=message
+            message=message,
         )
 
         # Log progress if enabled
-        if self.show_progress and current_time - self._last_log_time >= self.update_interval:
+        if (
+            self.show_progress
+            and current_time - self._last_log_time >= self.update_interval
+        ):
             self._log_progress(update)
             self._last_log_time = current_time
 
@@ -293,7 +296,11 @@ class ProgressTracker:
             message = self.custom_formatter(update)
             logger.info(message)
         else:
-            eta_str = f"ETA: {self._format_time(update.eta_seconds)}" if update.eta_seconds else "ETA: --"
+            eta_str = (
+                f"ETA: {self._format_time(update.eta_seconds)}"
+                if update.eta_seconds
+                else "ETA: --"
+            )
             rate_str = f"{update.rate:.1f} items/s" if update.rate > 0 else "-- items/s"
 
             message = (
@@ -320,13 +327,11 @@ class ProgressTracker:
             try:
                 callback(update)
             except Exception as e:
-                logger.warning(
-                    "Progress callback failed",
-                    callback=name,
-                    error=str(e)
-                )
+                logger.warning("Progress callback failed", callback=name, error=str(e))
 
-    def add_callback(self, name: str, callback: Callable[[ProgressUpdate], None]) -> None:
+    def add_callback(
+        self, name: str, callback: Callable[[ProgressUpdate], None]
+    ) -> None:
         """
         Add progress update callback.
 
@@ -335,7 +340,9 @@ class ProgressTracker:
             callback: Function to call with progress updates
         """
         self._callbacks[name] = callback
-        logger.debug("Progress callback added", callback=name, operation=self.operation_name)
+        logger.debug(
+            "Progress callback added", callback=name, operation=self.operation_name
+        )
 
     def remove_callback(self, name: str) -> None:
         """
@@ -346,7 +353,11 @@ class ProgressTracker:
         """
         if name in self._callbacks:
             del self._callbacks[name]
-            logger.debug("Progress callback removed", callback=name, operation=self.operation_name)
+            logger.debug(
+                "Progress callback removed",
+                callback=name,
+                operation=self.operation_name,
+            )
 
     @staticmethod
     def _format_time(seconds: Optional[float]) -> str:
@@ -391,10 +402,14 @@ class ProgressTracker:
             "status": self.status.value,
             "items_processed": self.stats.items_processed,
             "items_total": self.stats.items_total,
-            "percentage": (self.stats.items_processed / self.stats.items_total * 100) if self.stats.items_total > 0 else 0,
+            "percentage": (
+                (self.stats.items_processed / self.stats.items_total * 100)
+                if self.stats.items_total > 0
+                else 0
+            ),
             "elapsed_seconds": elapsed,
             "start_time": self.stats.start_time,
-            "end_time": self.stats.end_time
+            "end_time": self.stats.end_time,
         }
 
 
@@ -434,7 +449,7 @@ class MultiProgressTracker:
             f"{self.operation_name}/{name}",
             total_items,
             show_progress=False,  # We'll handle display
-            custom_formatter=self._format_multi_progress
+            custom_formatter=self._format_multi_progress,
         )
 
         self.trackers[name] = tracker
@@ -456,10 +471,14 @@ class MultiProgressTracker:
         total_processed = sum(t.stats.items_processed for t in self.trackers.values())
         total_items = sum(t.stats.items_total for t in self.trackers.values())
 
-        overall_percentage = (total_processed / total_items * 100) if total_items > 0 else 0
+        overall_percentage = (
+            (total_processed / total_items * 100) if total_items > 0 else 0
+        )
 
         # Count completed operations
-        completed = sum(1 for t in self.trackers.values() if t.status == ProgressStatus.COMPLETED)
+        completed = sum(
+            1 for t in self.trackers.values() if t.status == ProgressStatus.COMPLETED
+        )
         total_ops = len(self.trackers)
 
         return (
@@ -478,17 +497,27 @@ class MultiProgressTracker:
         total_processed = sum(t.stats.items_processed for t in self.trackers.values())
         total_items = sum(t.stats.items_total for t in self.trackers.values())
 
-        completed_ops = [name for name, t in self.trackers.items() if t.status == ProgressStatus.COMPLETED]
-        failed_ops = [name for name, t in self.trackers.items() if t.status == ProgressStatus.FAILED]
+        completed_ops = [
+            name
+            for name, t in self.trackers.items()
+            if t.status == ProgressStatus.COMPLETED
+        ]
+        failed_ops = [
+            name
+            for name, t in self.trackers.items()
+            if t.status == ProgressStatus.FAILED
+        ]
 
         return {
             "operation": self.operation_name,
             "total_items": total_items,
             "total_processed": total_processed,
-            "percentage": (total_processed / total_items * 100) if total_items > 0 else 0,
+            "percentage": (
+                (total_processed / total_items * 100) if total_items > 0 else 0
+            ),
             "operations_completed": len(completed_ops),
             "operations_failed": len(failed_ops),
             "operations_total": len(self.trackers),
             "completed_operations": completed_ops,
-            "failed_operations": failed_ops
+            "failed_operations": failed_ops,
         }

@@ -19,6 +19,7 @@ logger = structlog.get_logger()
 @dataclass
 class BookmarkInfo:
     """Information about a PDF bookmark."""
+
     title: str
     page_number: int
     level: int
@@ -57,7 +58,7 @@ class BookmarkManager:
                 title=sheet_name.strip(),
                 page_number=page_number,
                 level=0,  # Sheet bookmarks are top-level
-                parent=None
+                parent=None,
             )
 
             self.bookmarks.append(bookmark)
@@ -68,8 +69,8 @@ class BookmarkManager:
                 extra={
                     "sheet_name": sheet_name,
                     "page_number": page_number,
-                    "total_bookmarks": len(self.bookmarks)
-                }
+                    "total_bookmarks": len(self.bookmarks),
+                },
             )
 
             return bookmark
@@ -80,8 +81,8 @@ class BookmarkManager:
                 extra={
                     "sheet_name": sheet_name,
                     "page_number": page_number,
-                    "error": str(e)
-                }
+                    "error": str(e),
+                },
             )
             raise PDFGenerationException(f"Failed to add sheet bookmark: {e}") from e
         except Exception as e:
@@ -90,13 +91,16 @@ class BookmarkManager:
                 extra={
                     "sheet_name": sheet_name,
                     "page_number": page_number,
-                    "error": str(e)
-                }
+                    "error": str(e),
+                },
             )
-            raise PDFGenerationException("Unexpected error adding sheet bookmark") from e
+            raise PDFGenerationException(
+                "Unexpected error adding sheet bookmark"
+            ) from e
 
-    def add_table_bookmark(self, table_name: str, page_number: int,
-                          parent_sheet: str, level: int = 1) -> BookmarkInfo:
+    def add_table_bookmark(
+        self, table_name: str, page_number: int, parent_sheet: str, level: int = 1
+    ) -> BookmarkInfo:
         """Add bookmark for table within a sheet.
 
         Args:
@@ -136,15 +140,15 @@ class BookmarkManager:
                     extra={
                         "table_name": table_name,
                         "parent_sheet": parent_sheet,
-                        "page_number": page_number
-                    }
+                        "page_number": page_number,
+                    },
                 )
 
             bookmark = BookmarkInfo(
                 title=table_name.strip(),
                 page_number=page_number,
                 level=level,
-                parent=parent_sheet.strip()
+                parent=parent_sheet.strip(),
             )
 
             self.bookmarks.append(bookmark)
@@ -157,8 +161,8 @@ class BookmarkManager:
                     "page_number": page_number,
                     "parent_sheet": parent_sheet,
                     "level": level,
-                    "total_bookmarks": len(self.bookmarks)
-                }
+                    "total_bookmarks": len(self.bookmarks),
+                },
             )
 
             return bookmark
@@ -171,8 +175,8 @@ class BookmarkManager:
                     "page_number": page_number,
                     "parent_sheet": parent_sheet,
                     "level": level,
-                    "error": str(e)
-                }
+                    "error": str(e),
+                },
             )
             raise PDFGenerationException(f"Failed to add table bookmark: {e}") from e
         except Exception as e:
@@ -183,10 +187,12 @@ class BookmarkManager:
                     "page_number": page_number,
                     "parent_sheet": parent_sheet,
                     "level": level,
-                    "error": str(e)
-                }
+                    "error": str(e),
+                },
             )
-            raise PDFGenerationException("Unexpected error adding table bookmark") from e
+            raise PDFGenerationException(
+                "Unexpected error adding table bookmark"
+            ) from e
 
     def generate_bookmark_outline(self) -> Dict[str, Any]:
         """Generate bookmark outline structure for PDF.
@@ -205,14 +211,13 @@ class BookmarkManager:
                     "metadata": {
                         "total_bookmarks": 0,
                         "max_level": 0,
-                        "total_pages": self.page_counter
-                    }
+                        "total_pages": self.page_counter,
+                    },
                 }
 
             # Sort bookmarks by page number, then by level, then by title
             sorted_bookmarks = sorted(
-                self.bookmarks,
-                key=lambda b: (b.page_number, b.level, b.title)
+                self.bookmarks, key=lambda b: (b.page_number, b.level, b.title)
             )
 
             # Build hierarchical structure
@@ -227,7 +232,7 @@ class BookmarkManager:
                         "title": bookmark.title,
                         "page": bookmark.page_number,
                         "level": bookmark.level,
-                        "children": []
+                        "children": [],
                     }
                     sheet_bookmarks[bookmark.title] = sheet_entry
                 else:
@@ -235,12 +240,14 @@ class BookmarkManager:
                     if bookmark.parent and bookmark.parent in sheet_bookmarks:
                         children_list = sheet_bookmarks[bookmark.parent]["children"]
                         if isinstance(children_list, list):
-                            children_list.append({
-                                "title": bookmark.title,
-                                "page": bookmark.page_number,
-                                "level": bookmark.level,
-                                "children": []  # Support for deeper nesting if needed
-                            })
+                            children_list.append(
+                                {
+                                    "title": bookmark.title,
+                                    "page": bookmark.page_number,
+                                    "level": bookmark.level,
+                                    "children": [],  # Support for deeper nesting if needed
+                                }
+                            )
                     else:
                         # Orphan table bookmark - add as top-level
                         logger.warning(
@@ -248,15 +255,17 @@ class BookmarkManager:
                             extra={
                                 "title": bookmark.title,
                                 "parent": bookmark.parent,
-                                "page": bookmark.page_number
+                                "page": bookmark.page_number,
+                            },
+                        )
+                        outline.append(
+                            {
+                                "title": bookmark.title,
+                                "page": bookmark.page_number,
+                                "level": bookmark.level,
+                                "children": [],
                             }
                         )
-                        outline.append({
-                            "title": bookmark.title,
-                            "page": bookmark.page_number,
-                            "level": bookmark.level,
-                            "children": []
-                        })
 
             # Add sheet bookmarks to outline in order
             for bookmark in sorted_bookmarks:
@@ -264,7 +273,11 @@ class BookmarkManager:
                     outline.append(sheet_bookmarks[bookmark.title])
 
             # Calculate metadata
-            max_level = max(bookmark.level for bookmark in self.bookmarks) if self.bookmarks else 0
+            max_level = (
+                max(bookmark.level for bookmark in self.bookmarks)
+                if self.bookmarks
+                else 0
+            )
 
             result = {
                 "outline": outline,
@@ -273,8 +286,8 @@ class BookmarkManager:
                     "max_level": max_level,
                     "total_pages": self.page_counter,
                     "sheet_count": len([b for b in self.bookmarks if b.level == 0]),
-                    "table_count": len([b for b in self.bookmarks if b.level > 0])
-                }
+                    "table_count": len([b for b in self.bookmarks if b.level > 0]),
+                },
             }
 
             logger.info(
@@ -283,8 +296,8 @@ class BookmarkManager:
                     "total_bookmarks": len(self.bookmarks),
                     "outline_items": len(outline),
                     "max_level": max_level,
-                    "total_pages": self.page_counter
-                }
+                    "total_pages": self.page_counter,
+                },
             )
 
             return result
@@ -292,10 +305,7 @@ class BookmarkManager:
         except Exception as e:
             logger.error(
                 "Failed to generate bookmark outline",
-                extra={
-                    "bookmark_count": len(self.bookmarks),
-                    "error": str(e)
-                }
+                extra={"bookmark_count": len(self.bookmarks), "error": str(e)},
             )
             raise PDFGenerationException("Failed to generate bookmark outline") from e
 
@@ -309,7 +319,8 @@ class BookmarkManager:
             List of bookmarks belonging to the sheet
         """
         return [
-            bookmark for bookmark in self.bookmarks
+            bookmark
+            for bookmark in self.bookmarks
             if bookmark.parent == sheet_name or bookmark.title == sheet_name
         ]
 
@@ -346,10 +357,7 @@ class BookmarkManager:
         self.bookmarks.clear()
         self.page_counter = 0
 
-        logger.debug(
-            "Bookmarks cleared",
-            extra={"cleared_count": bookmark_count}
-        )
+        logger.debug("Bookmarks cleared", extra={"cleared_count": bookmark_count})
 
     def validate_bookmark_structure(self) -> List[str]:
         """Validate bookmark structure and return list of issues.
@@ -367,14 +375,24 @@ class BookmarkManager:
         for bookmark in self.bookmarks:
             key = (bookmark.title.lower(), bookmark.level)
             if key in seen_bookmarks:
-                issues.append(f"Duplicate bookmark found: '{bookmark.title}' at level {bookmark.level}")
+                issues.append(
+                    f"Duplicate bookmark found: '{bookmark.title}' at level {bookmark.level}"
+                )
             seen_bookmarks.add(key)
 
         # Check for orphan table bookmarks
-        sheet_names = {bookmark.title for bookmark in self.bookmarks if bookmark.level == 0}
+        sheet_names = {
+            bookmark.title for bookmark in self.bookmarks if bookmark.level == 0
+        }
         for bookmark in self.bookmarks:
-            if bookmark.level > 0 and bookmark.parent and bookmark.parent not in sheet_names:
-                issues.append(f"Orphan table bookmark: '{bookmark.title}' with non-existent parent '{bookmark.parent}'")
+            if (
+                bookmark.level > 0
+                and bookmark.parent
+                and bookmark.parent not in sheet_names
+            ):
+                issues.append(
+                    f"Orphan table bookmark: '{bookmark.title}' with non-existent parent '{bookmark.parent}'"
+                )
 
         # Check page number consistency
         if self.bookmarks:
@@ -390,11 +408,15 @@ class BookmarkManager:
         # Check for level gaps
         levels = sorted(set(bookmark.level for bookmark in self.bookmarks))
         if levels and levels[0] != 0:
-            issues.append(f"Bookmark levels should start at 0, but start at {levels[0]}")
+            issues.append(
+                f"Bookmark levels should start at 0, but start at {levels[0]}"
+            )
 
         for i in range(1, len(levels)):
-            if levels[i] != levels[i-1] + 1:
-                issues.append(f"Gap in bookmark levels: missing level {levels[i-1] + 1}")
+            if levels[i] != levels[i - 1] + 1:
+                issues.append(
+                    f"Gap in bookmark levels: missing level {levels[i-1] + 1}"
+                )
 
         if issues:
             logger.warning(
@@ -402,13 +424,13 @@ class BookmarkManager:
                 extra={
                     "issue_count": len(issues),
                     "bookmark_count": len(self.bookmarks),
-                    "issues": issues
-                }
+                    "issues": issues,
+                },
             )
         else:
             logger.debug(
                 "Bookmark structure validation passed",
-                extra={"bookmark_count": len(self.bookmarks)}
+                extra={"bookmark_count": len(self.bookmarks)},
             )
 
         return issues
@@ -427,14 +449,16 @@ class BookmarkManager:
                 "max_level": 0,
                 "total_pages": 0,
                 "average_tables_per_sheet": 0,
-                "sheets_with_tables": 0
+                "sheets_with_tables": 0,
             }
 
         sheet_bookmarks = self.get_sheet_bookmarks()
         table_bookmarks = self.get_table_bookmarks()
 
         # Calculate sheets with tables
-        sheets_with_tables = len(set(bookmark.parent for bookmark in table_bookmarks if bookmark.parent))
+        sheets_with_tables = len(
+            set(bookmark.parent for bookmark in table_bookmarks if bookmark.parent)
+        )
 
         return {
             "total_bookmarks": len(self.bookmarks),
@@ -442,6 +466,8 @@ class BookmarkManager:
             "table_count": len(table_bookmarks),
             "max_level": max(bookmark.level for bookmark in self.bookmarks),
             "total_pages": self.page_counter,
-            "average_tables_per_sheet": len(table_bookmarks) / len(sheet_bookmarks) if sheet_bookmarks else 0,
-            "sheets_with_tables": sheets_with_tables
+            "average_tables_per_sheet": (
+                len(table_bookmarks) / len(sheet_bookmarks) if sheet_bookmarks else 0
+            ),
+            "sheets_with_tables": sheets_with_tables,
         }

@@ -24,7 +24,7 @@ from .exceptions import (
     ExcelReaderError,
     WorkbookInitializationException,
     WorksheetNotFoundException,
-    DataExtractionException
+    DataExtractionException,
 )
 from .memory_monitor import MemoryMonitor, ResourceLimits
 from .progress_tracker import ProgressTracker, MultiProgressTracker
@@ -36,6 +36,7 @@ logger = structlog.get_logger()
 @dataclass
 class ChunkInfo:
     """Information about a data chunk."""
+
     chunk_index: int
     start_row: int
     end_row: int
@@ -46,6 +47,7 @@ class ChunkInfo:
 @dataclass
 class ProcessingStats:
     """Processing performance statistics."""
+
     total_rows_processed: int = 0
     total_chunks_processed: int = 0
     processing_time_seconds: float = 0.0
@@ -67,7 +69,7 @@ class ChunkIterator:
         worksheet: Worksheet,
         chunk_size: int,
         max_row: Optional[int] = None,
-        values_only: bool = True
+        values_only: bool = True,
     ):
         """
         Initialize chunk iterator.
@@ -92,8 +94,11 @@ class ChunkIterator:
             end_row = min(self._current_row + self.chunk_size - 1, self.max_row)
 
             # Extract chunk data
-            for row in islice(self.worksheet.iter_rows(values_only=self.values_only),
-                            start_row - 1, end_row):
+            for row in islice(
+                self.worksheet.iter_rows(values_only=self.values_only),
+                start_row - 1,
+                end_row,
+            ):
                 # Convert row to list and filter None values at the end
                 row_data = list(row) if row else []
                 while row_data and row_data[-1] is None:
@@ -106,7 +111,7 @@ class ChunkIterator:
                 start_row=start_row,
                 end_row=end_row,
                 row_count=len(chunk_data),
-                sheet_name=self.worksheet.title
+                sheet_name=self.worksheet.title,
             )
 
             # Update position for next iteration
@@ -167,7 +172,7 @@ class StreamingExcelProcessor:
                 structlog.processors.StackInfoRenderer(),
                 structlog.processors.format_exc_info,
                 structlog.processors.UnicodeDecoder(),
-                structlog.processors.JSONRenderer()
+                structlog.processors.JSONRenderer(),
             ],
             context_class=dict,
             logger_factory=structlog.stdlib.LoggerFactory(),
@@ -180,7 +185,7 @@ class StreamingExcelProcessor:
             file_path=str(self.file_path),
             streaming_enabled=self.config.streaming_enabled,
             chunk_size=self.config.chunk_size,
-            memory_limit_mb=self.config.memory_limit_mb
+            memory_limit_mb=self.config.memory_limit_mb,
         )
 
     def _validate_file(self) -> None:
@@ -209,14 +214,14 @@ class StreamingExcelProcessor:
                 filename=str(self.file_path),
                 read_only=True,
                 data_only=True,
-                keep_links=False  # Improve performance
+                keep_links=False,  # Improve performance
             )
 
             # Initialize memory monitoring
             if self.config.streaming_enabled:
                 resource_limits = ResourceLimits(
                     max_memory_mb=self.config.memory_limit_mb,
-                    gc_threshold_mb=self.config.chunk_size * 0.1  # 10% of chunk size
+                    gc_threshold_mb=self.config.chunk_size * 0.1,  # 10% of chunk size
                 )
                 self.memory_monitor = MemoryMonitor(resource_limits)
                 self.memory_monitor.start_monitoring()
@@ -224,14 +229,13 @@ class StreamingExcelProcessor:
             logger.info(
                 "Workbook opened successfully",
                 sheets=len(self.workbook.sheetnames),
-                file_size_mb=self.file_path.stat().st_size / (1024 * 1024)
+                file_size_mb=self.file_path.stat().st_size / (1024 * 1024),
             )
 
         except Exception as e:
             logger.error("Failed to initialize workbook", error=str(e))
             raise WorkbookInitializationException(
-                f"Failed to initialize workbook: {e}",
-                str(self.file_path)
+                f"Failed to initialize workbook: {e}", str(self.file_path)
             ) from e
 
     def close(self) -> None:
@@ -279,9 +283,7 @@ class StreamingExcelProcessor:
         return sheet_names
 
     def process_sheet_chunked(
-        self,
-        sheet_name: str,
-        progress_tracker: Optional[ProgressTracker] = None
+        self, sheet_name: str, progress_tracker: Optional[ProgressTracker] = None
     ) -> Iterator[Tuple[List[List[Any]], ChunkInfo]]:
         """
         Process a worksheet in chunks.
@@ -298,20 +300,23 @@ class StreamingExcelProcessor:
 
         if not self.workbook or sheet_name not in self.workbook.sheetnames:
             raise WorksheetNotFoundException(
-                f"Worksheet '{sheet_name}' not found",
-                str(self.file_path)
+                f"Worksheet '{sheet_name}' not found", str(self.file_path)
             )
 
         worksheet = self.workbook[sheet_name]
         logger.info(f"Processing sheet '{sheet_name}' in chunks")
 
         # Create chunk iterator
-        max_row = worksheet.max_row if worksheet.max_row is not None else self.config.max_row_count
+        max_row = (
+            worksheet.max_row
+            if worksheet.max_row is not None
+            else self.config.max_row_count
+        )
         chunk_iterator = ChunkIterator(
             worksheet=worksheet,
             chunk_size=self.config.chunk_size,
             max_row=min(max_row, self.config.max_row_count),
-            values_only=True
+            values_only=True,
         )
 
         # Initialize progress tracking
@@ -332,7 +337,7 @@ class StreamingExcelProcessor:
                 progress_tracker.update(
                     chunk_info.chunk_index + 1,
                     f"Processing chunk {chunk_info.chunk_index + 1} "
-                    f"(rows {chunk_info.start_row}-{chunk_info.end_row})"
+                    f"(rows {chunk_info.start_row}-{chunk_info.end_row})",
                 )
 
             # Update statistics
@@ -352,13 +357,11 @@ class StreamingExcelProcessor:
         logger.info(
             f"Completed chunked processing of sheet '{sheet_name}'",
             total_rows=self.processing_stats.total_rows_processed,
-            total_chunks=self.processing_stats.total_chunks_processed
+            total_chunks=self.processing_stats.total_chunks_processed,
         )
 
     def extract_sheet_data_streaming(
-        self,
-        sheet_name: str,
-        progress_tracker: Optional[ProgressTracker] = None
+        self, sheet_name: str, progress_tracker: Optional[ProgressTracker] = None
     ) -> SheetData:
         """
         Extract sheet data using streaming approach.
@@ -375,8 +378,7 @@ class StreamingExcelProcessor:
 
         if not self.workbook or sheet_name not in self.workbook.sheetnames:
             raise WorksheetNotFoundException(
-                f"Worksheet '{sheet_name}' not found",
-                str(self.file_path)
+                f"Worksheet '{sheet_name}' not found", str(self.file_path)
             )
 
         worksheet = self.workbook[sheet_name]
@@ -389,7 +391,9 @@ class StreamingExcelProcessor:
         has_data = False
 
         # Process sheet in chunks
-        for chunk_data, chunk_info in self.process_sheet_chunked(sheet_name, progress_tracker):
+        for chunk_data, chunk_info in self.process_sheet_chunked(
+            sheet_name, progress_tracker
+        ):
             # Process chunk data
             for row in chunk_data:
                 if row:  # Only add non-empty rows
@@ -400,32 +404,36 @@ class StreamingExcelProcessor:
 
             # Check memory limits
             if self.memory_monitor and not self.memory_monitor.check_memory_limits():
-                logger.warning("Memory pressure detected, but continuing with streaming")
+                logger.warning(
+                    "Memory pressure detected, but continuing with streaming"
+                )
 
         # Extract metadata
         metadata = {
             "title": worksheet.title,
             "max_row": worksheet.max_row,
             "max_column": worksheet.max_column,
-            "sheet_state": getattr(worksheet, 'sheet_state', 'visible'),
+            "sheet_state": getattr(worksheet, "sheet_state", "visible"),
             "processing_stats": {
                 "chunks_processed": self.processing_stats.total_chunks_processed,
                 "processing_time_seconds": time.time() - start_time,
-                "streaming_mode": True
-            }
+                "streaming_mode": True,
+            },
         }
 
         # Extract formal tables (if any) - in read-only mode this may be limited
         tables = []
-        if hasattr(worksheet, 'tables') and worksheet.tables:
+        if hasattr(worksheet, "tables") and worksheet.tables:
             for table in worksheet.tables.values():
-                tables.append({
-                    "name": table.name,
-                    "ref": table.ref,
-                    "headerRowCount": table.headerRowCount,
-                    "insertRow": getattr(table, 'insertRow', False),
-                    "totalsRowCount": getattr(table, 'totalsRowCount', 0)
-                })
+                tables.append(
+                    {
+                        "name": table.name,
+                        "ref": table.ref,
+                        "headerRowCount": table.headerRowCount,
+                        "insertRow": getattr(table, "insertRow", False),
+                        "totalsRowCount": getattr(table, "totalsRowCount", 0),
+                    }
+                )
 
         # Create sheet data
         sheet_data = SheetData(
@@ -435,7 +443,7 @@ class StreamingExcelProcessor:
             raw_data=all_data,
             row_count=row_count,
             col_count=col_count,
-            has_data=has_data
+            has_data=has_data,
         )
 
         logger.info(
@@ -443,14 +451,13 @@ class StreamingExcelProcessor:
             rows=row_count,
             cols=col_count,
             tables=len(tables),
-            processing_time=time.time() - start_time
+            processing_time=time.time() - start_time,
         )
 
         return sheet_data
 
     def process_all_sheets_parallel(
-        self,
-        progress_tracker: Optional[ProgressTracker] = None
+        self, progress_tracker: Optional[ProgressTracker] = None
     ) -> List[SheetData]:
         """
         Process all sheets in parallel.
@@ -475,12 +482,14 @@ class StreamingExcelProcessor:
         # Create multi-progress tracker
         multi_tracker = None
         if progress_tracker:
-            multi_tracker = MultiProgressTracker("Processing sheets", self.config.enable_progress)
+            multi_tracker = MultiProgressTracker(
+                "Processing sheets", self.config.enable_progress
+            )
             multi_progress = ProgressTracker(
                 "Overall progress",
                 len(sheet_names),
                 self.config.progress_interval,
-                self.config.enable_progress
+                self.config.enable_progress,
             )
 
         results: List[SheetData] = []
@@ -530,21 +539,20 @@ class StreamingExcelProcessor:
             raise DataExtractionException(
                 f"Failed to process {len(errors)} sheets",
                 str(self.file_path),
-                context={"errors": [str(e) for e in errors]}
+                context={"errors": [str(e) for e in errors]},
             )
 
         logger.info(
             "Parallel sheet processing completed",
             sheets_processed=len(results),
             errors=len(errors),
-            total_rows_processed=self.processing_stats.total_rows_processed
+            total_rows_processed=self.processing_stats.total_rows_processed,
         )
 
         return results
 
     def process_all_sheets_sequential(
-        self,
-        progress_tracker: Optional[ProgressTracker] = None
+        self, progress_tracker: Optional[ProgressTracker] = None
     ) -> List[SheetData]:
         """
         Process all sheets sequentially.
@@ -568,7 +576,7 @@ class StreamingExcelProcessor:
                 "Processing all sheets",
                 len(sheet_names),
                 self.config.progress_interval,
-                self.config.enable_progress
+                self.config.enable_progress,
             )
             overall_progress.start()
 
@@ -581,11 +589,13 @@ class StreamingExcelProcessor:
                         f"Sheet {sheet_name}",
                         1,
                         self.config.progress_interval,
-                        False  # Don't show individual sheet progress
+                        False,  # Don't show individual sheet progress
                     )
                     sheet_progress.start()
 
-                sheet_data = self.extract_sheet_data_streaming(sheet_name, sheet_progress)
+                sheet_data = self.extract_sheet_data_streaming(
+                    sheet_name, sheet_progress
+                )
                 results.append(sheet_data)
 
                 if overall_progress:
@@ -605,7 +615,7 @@ class StreamingExcelProcessor:
         logger.info(
             "Sequential sheet processing completed",
             sheets_processed=len(results),
-            total_rows_processed=self.processing_stats.total_rows_processed
+            total_rows_processed=self.processing_stats.total_rows_processed,
         )
 
         return results
@@ -624,9 +634,7 @@ class StreamingExcelProcessor:
         return self.processing_stats
 
     def detect_tables_streaming(
-        self,
-        sheet_name: str,
-        progress_tracker: Optional[ProgressTracker] = None
+        self, sheet_name: str, progress_tracker: Optional[ProgressTracker] = None
     ) -> List[TableInfo]:
         """
         Detect tables in a worksheet using streaming approach.

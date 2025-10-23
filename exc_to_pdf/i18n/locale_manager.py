@@ -26,89 +26,89 @@ class LocaleManager:
 
     # Supported locales with their configurations
     SUPPORTED_LOCALES = {
-        'en_US': {
-            'name': 'English (United States)',
-            'date_format': 'medium',
-            'time_format': 'medium',
-            'currency': 'USD',
-            'number_format': 'decimal',
-            'rtl': False,
-            'decimal_separator': '.',
-            'thousands_separator': ','
+        "en_US": {
+            "name": "English (United States)",
+            "date_format": "medium",
+            "time_format": "medium",
+            "currency": "USD",
+            "number_format": "decimal",
+            "rtl": False,
+            "decimal_separator": ".",
+            "thousands_separator": ",",
         },
-        'it_IT': {
-            'name': 'Italiano (Italia)',
-            'date_format': 'long',
-            'time_format': 'short',
-            'currency': 'EUR',
-            'number_format': 'decimal',
-            'rtl': False,
-            'decimal_separator': ',',
-            'thousands_separator': '.'
+        "it_IT": {
+            "name": "Italiano (Italia)",
+            "date_format": "long",
+            "time_format": "short",
+            "currency": "EUR",
+            "number_format": "decimal",
+            "rtl": False,
+            "decimal_separator": ",",
+            "thousands_separator": ".",
         },
-        'de_DE': {
-            'name': 'Deutsch (Deutschland)',
-            'date_format': 'medium',
-            'time_format': 'short',
-            'currency': 'EUR',
-            'number_format': 'decimal',
-            'rtl': False,
-            'decimal_separator': ',',
-            'thousands_separator': '.'
+        "de_DE": {
+            "name": "Deutsch (Deutschland)",
+            "date_format": "medium",
+            "time_format": "short",
+            "currency": "EUR",
+            "number_format": "decimal",
+            "rtl": False,
+            "decimal_separator": ",",
+            "thousands_separator": ".",
         },
-        'fr_FR': {
-            'name': 'Français (France)',
-            'date_format': 'long',
-            'time_format': 'short',
-            'currency': 'EUR',
-            'number_format': 'decimal',
-            'rtl': False,
-            'decimal_separator': ',',
-            'thousands_separator': ' '
+        "fr_FR": {
+            "name": "Français (France)",
+            "date_format": "long",
+            "time_format": "short",
+            "currency": "EUR",
+            "number_format": "decimal",
+            "rtl": False,
+            "decimal_separator": ",",
+            "thousands_separator": " ",
         },
-        'es_ES': {
-            'name': 'Español (España)',
-            'date_format': 'long',
-            'time_format': 'short',
-            'currency': 'EUR',
-            'number_format': 'decimal',
-            'rtl': False,
-            'decimal_separator': ',',
-            'thousands_separator': '.'
+        "es_ES": {
+            "name": "Español (España)",
+            "date_format": "long",
+            "time_format": "short",
+            "currency": "EUR",
+            "number_format": "decimal",
+            "rtl": False,
+            "decimal_separator": ",",
+            "thousands_separator": ".",
         },
-        'ar_EG': {
-            'name': 'العربية (مصر)',
-            'date_format': 'long',
-            'time_format': 'medium',
-            'currency': 'EGP',
-            'number_format': 'decimal',
-            'rtl': True,
-            'decimal_separator': '٫',
-            'thousands_separator': '٬'
+        "ar_EG": {
+            "name": "العربية (مصر)",
+            "date_format": "long",
+            "time_format": "medium",
+            "currency": "EGP",
+            "number_format": "decimal",
+            "rtl": True,
+            "decimal_separator": "٫",
+            "thousands_separator": "٬",
         },
-        'ja_JP': {
-            'name': '日本語 (日本)',
-            'date_format': 'long',
-            'time_format': 'short',
-            'currency': 'JPY',
-            'number_format': 'decimal',
-            'rtl': False,
-            'decimal_separator': '.',
-            'thousands_separator': ','
+        "ja_JP": {
+            "name": "日本語 (日本)",
+            "date_format": "long",
+            "time_format": "short",
+            "currency": "JPY",
+            "number_format": "decimal",
+            "rtl": False,
+            "decimal_separator": ".",
+            "thousands_separator": ",",
         },
-        'zh_CN': {
-            'name': '中文 (中国)',
-            'date_format': 'long',
-            'time_format': 'short',
-            'currency': 'CNY',
-            'number_format': 'decimal',
-            'rtl': False,
-            'decimal_separator': '.',
-            'thousands_separator': ','
-        }
+        "zh_CN": {
+            "name": "中文 (中国)",
+            "date_format": "long",
+            "time_format": "short",
+            "currency": "CNY",
+            "number_format": "decimal",
+            "rtl": False,
+            "decimal_separator": ".",
+            "thousands_separator": ",",
+        },
     }
 
-    def __init__(self, default_locale: str = 'en_US', timezone: str = 'UTC'):
+    def __init__(self, default_locale: str = "en_US", timezone: str = "UTC"):
         """Initialize locale manager.
 
         Args:
@@ -123,9 +123,12 @@ class LocaleManager:
         # Set default locale
         self.set_locale(default_locale)
 
-    def detect_locale(self, input_file: Optional[str] = None,
-                     system_locale: bool = True,
-                     file_analysis: bool = True) -> str:
+    def detect_locale(
+        self,
+        input_file: Optional[str] = None,
+        system_locale: bool = True,
+        file_analysis: bool = True,
+    ) -> str:
         """Detect appropriate locale based on various factors.
 
         Args:
@@ -163,7 +166,9 @@ class LocaleManager:
             detected_locale = self.default_locale
             logger.debug(f"Using default locale: {detected_locale}")
 
-        logger.info(f"Detected locale: {detected_locale} ({self.SUPPORTED_LOCALES[detected_locale]['name']})")
+        logger.info(
+            f"Detected locale: {detected_locale} ({self.SUPPORTED_LOCALES[detected_locale]['name']})"
+        )
         return detected_locale
 
     def set_locale(self, locale_code: str) -> None:
@@ -177,7 +182,9 @@ class LocaleManager:
         """
         if locale_code not in self.SUPPORTED_LOCALES:
             available = ", ".join(self.SUPPORTED_LOCALES.keys())
-            raise ValueError(f"Unsupported locale: {locale_code}. Supported locales: {available}")
+            raise ValueError(
+                f"Unsupported locale: {locale_code}. Supported locales: {available}"
+            )
 
         try:
             # Create Babel Locale object
@@ -208,7 +215,9 @@ class LocaleManager:
         Returns:
             Current locale code
         """
-        return str(self._current_locale) if self._current_locale else self.default_locale
+        return (
+            str(self._current_locale) if self._current_locale else self.default_locale
+        )
 
     def get_locale_info(self, locale_code: Optional[str] = None) -> Dict[str, Any]:
         """Get information about a locale.
@@ -255,7 +264,7 @@ class LocaleManager:
             True if locale is RTL
         """
         locale_code = locale_code or self.get_current_locale()
-        return self.SUPPORTED_LOCALES.get(locale_code, {}).get('rtl', False)
+        return self.SUPPORTED_LOCALES.get(locale_code, {}).get("rtl", False)
 
     def get_currency_code(self, locale_code: Optional[str] = None) -> str:
         """Get default currency code for locale.
@@ -267,7 +276,7 @@ class LocaleManager:
             Currency code
         """
         locale_code = locale_code or self.get_current_locale()
-        return self.SUPPORTED_LOCALES.get(locale_code, {}).get('currency', 'USD')
+        return self.SUPPORTED_LOCALES.get(locale_code, {}).get("currency", "USD")
 
     def get_supported_locales(self) -> Dict[str, Dict[str, Any]]:
         """Get all supported locales.
@@ -297,17 +306,17 @@ class LocaleManager:
             if system_locale and system_locale[0]:
                 # Convert to proper format (e.g., 'en_US' instead of 'en_US.UTF-8')
                 locale_code = system_locale[0]
-                if '.' in locale_code:
-                    locale_code = locale_code.split('.')[0]
+                if "." in locale_code:
+                    locale_code = locale_code.split(".")[0]
 
                 # Check if we support this locale
                 if locale_code in self.SUPPORTED_LOCALES:
                     return locale_code
 
                 # Try language-only version (e.g., 'en' -> 'en_US')
-                language = locale_code.split('_')[0]
+                language = locale_code.split("_")[0]
                 for supported_locale in self.SUPPORTED_LOCALES:
-                    if supported_locale.startswith(language + '_'):
+                    if supported_locale.startswith(language + "_"):
                         return supported_locale
 
         except Exception as e:
@@ -331,7 +340,7 @@ class LocaleManager:
 
             # For Excel files, could analyze number formats, dates, etc.
             # This is a simplified implementation
-            if file_path.suffix.lower() in ['.xlsx', '.xls']:
+            if file_path.suffix.lower() in [".xlsx", ".xls"]:
                 # Could use openpyxl to analyze cell formats
                 # For now, just check filename and path for hints
                 return self._analyze_path_for_locale_hints(file_path)
@@ -354,24 +363,24 @@ class LocaleManager:
 
         # Check for language indicators in path
         locale_hints = {
-            'italian': 'it_IT',
-            'italiano': 'it_IT',
-            'italia': 'it_IT',
-            'german': 'de_DE',
-            'deutsch': 'de_DE',
-            'deutschland': 'de_DE',
-            'french': 'fr_FR',
-            'français': 'fr_FR',
-            'france': 'fr_FR',
-            'spanish': 'es_ES',
-            'español': 'es_ES',
-            'españa': 'es_ES',
-            'arabic': 'ar_EG',
-            'العربية': 'ar_EG',
-            'japanese': 'ja_JP',
-            '日本語': 'ja_JP',
-            'chinese': 'zh_CN',
-            '中文': 'zh_CN'
+            "italian": "it_IT",
+            "italiano": "it_IT",
+            "italia": "it_IT",
+            "german": "de_DE",
+            "deutsch": "de_DE",
+            "deutschland": "de_DE",
+            "french": "fr_FR",
+            "français": "fr_FR",
+            "france": "fr_FR",
+            "spanish": "es_ES",
+            "español": "es_ES",
+            "españa": "es_ES",
+            "arabic": "ar_EG",
+            "العربية": "ar_EG",
+            "japanese": "ja_JP",
+            "日本語": "ja_JP",
+            "chinese": "zh_CN",
+            "中文": "zh_CN",
         }
 
         for hint, locale_code in locale_hints.items():
@@ -394,61 +403,61 @@ class LocaleManager:
         # Basic translations - in a real implementation, this would
         # load from proper .po/.mo files
         translations = {
-            'en_US': {
-                'loading': 'Loading...',
-                'processing': 'Processing...',
-                'complete': 'Complete',
-                'error': 'Error',
-                'page': 'Page',
-                'generated_by': 'Generated by exc-to-pdf',
-                'table': 'Table',
-                'chart': 'Chart',
-                'sheet': 'Sheet'
+            "en_US": {
+                "loading": "Loading...",
+                "processing": "Processing...",
+                "complete": "Complete",
+                "error": "Error",
+                "page": "Page",
+                "generated_by": "Generated by exc-to-pdf",
+                "table": "Table",
+                "chart": "Chart",
+                "sheet": "Sheet",
             },
-            'it_IT': {
-                'loading': 'Caricamento...',
-                'processing': 'Elaborazione...',
-                'complete': 'Completato',
-                'error': 'Errore',
-                'page': 'Pagina',
-                'generated_by': 'Generato da exc-to-pdf',
-                'table': 'Tabella',
-                'chart': 'Grafico',
-                'sheet': 'Foglio'
+            "it_IT": {
+                "loading": "Caricamento...",
+                "processing": "Elaborazione...",
+                "complete": "Completato",
+                "error": "Errore",
+                "page": "Pagina",
+                "generated_by": "Generato da exc-to-pdf",
+                "table": "Tabella",
+                "chart": "Grafico",
+                "sheet": "Foglio",
             },
-            'de_DE': {
-                'loading': 'Laden...',
-                'processing': 'Verarbeitung...',
-                'complete': 'Abgeschlossen',
-                'error': 'Fehler',
-                'page': 'Seite',
-                'generated_by': 'Erstellt von exc-to-pdf',
-                'table': 'Tabelle',
-                'chart': 'Diagramm',
-                'sheet': 'Blatt'
+            "de_DE": {
+                "loading": "Laden...",
+                "processing": "Verarbeitung...",
+                "complete": "Abgeschlossen",
+                "error": "Fehler",
+                "page": "Seite",
+                "generated_by": "Erstellt von exc-to-pdf",
+                "table": "Tabelle",
+                "chart": "Diagramm",
+                "sheet": "Blatt",
             },
-            'fr_FR': {
-                'loading': 'Chargement...',
-                'processing': 'Traitement...',
-                'complete': 'Terminé',
-                'error': 'Erreur',
-                'page': 'Page',
-                'generated_by': 'Généré par exc-to-pdf',
-                'table': 'Tableau',
-                'chart': 'Graphique',
-                'sheet': 'Feuille'
+            "fr_FR": {
+                "loading": "Chargement...",
+                "processing": "Traitement...",
+                "complete": "Terminé",
+                "error": "Erreur",
+                "page": "Page",
+                "generated_by": "Généré par exc-to-pdf",
+                "table": "Tableau",
+                "chart": "Graphique",
+                "sheet": "Feuille",
             },
-            'es_ES': {
-                'loading': 'Cargando...',
-                'processing': 'Procesando...',
-                'complete': 'Completado',
-                'error': 'Error',
-                'page': 'Página',
-                'generated_by': 'Generado por exc-to-pdf',
-                'table': 'Tabla',
-                'chart': 'Gráfico',
-                'sheet': 'Hoja'
-            }
+            "es_ES": {
+                "loading": "Cargando...",
+                "processing": "Procesando...",
+                "complete": "Completado",
+                "error": "Error",
+                "page": "Página",
+                "generated_by": "Generado por exc-to-pdf",
+                "table": "Tabla",
+                "chart": "Gráfico",
+                "sheet": "Hoja",
+            },
         }
 
-        return translations.get(locale_code, translations['en_US'])
+        return translations.get(locale_code, translations["en_US"])

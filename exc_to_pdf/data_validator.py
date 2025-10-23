@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class ValidationLevel(Enum):
     """Validation severity levels."""
+
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -29,6 +30,7 @@ class ValidationLevel(Enum):
 
 class DataType(Enum):
     """Supported data types for validation."""
+
     STRING = "string"
     INTEGER = "integer"
     FLOAT = "float"
@@ -49,6 +51,7 @@ class ValidationIssue:
 
     Contains details about validation problems found during data processing.
     """
+
     level: ValidationLevel
     code: str
     message: str
@@ -67,6 +70,7 @@ class ValidationResult:
 
     Contains validation summary, issues found, and statistics about the data.
     """
+
     is_valid: bool
     total_rows: int
     valid_rows: int
@@ -85,6 +89,7 @@ class ValidationRule:
 
     Defines how to validate a specific column or data field.
     """
+
     name: str
     data_type: DataType
     required: bool = True
@@ -126,13 +131,17 @@ class DataValidator:
             DataType.PHONE: self._validate_phone,
             DataType.URL: self._validate_url,
             DataType.CURRENCY: self._validate_currency,
-            DataType.PERCENTAGE: self._validate_percentage
+            DataType.PERCENTAGE: self._validate_percentage,
         }
 
         logger.debug("DataValidator initialized")
 
-    def validate_table_data(self, data: List[List[Any]], headers: List[str],
-                           rules: Optional[List[ValidationRule]] = None) -> ValidationResult:
+    def validate_table_data(
+        self,
+        data: List[List[Any]],
+        headers: List[str],
+        rules: Optional[List[ValidationRule]] = None,
+    ) -> ValidationResult:
         """
         Validate table data using provided rules.
 
@@ -154,7 +163,9 @@ class DataValidator:
             if headers is None:
                 headers = []
 
-            logger.debug(f"Starting validation for table with {len(data)} rows and {len(headers)} columns")
+            logger.debug(
+                f"Starting validation for table with {len(data)} rows and {len(headers)} columns"
+            )
 
             issues: List[ValidationIssue] = []
             valid_rows = 0
@@ -192,14 +203,18 @@ class DataValidator:
             statistics = self._calculate_statistics(data, headers, rules, issues)
 
             # Calculate confidence score
-            confidence_score = self._calculate_confidence_score(valid_cells, total_cells, issues)
+            confidence_score = self._calculate_confidence_score(
+                valid_cells, total_cells, issues
+            )
 
             # Determine overall validity
             # Empty data is valid if there are no error/critical issues
-            is_valid = (
-                not any(issue.level in [ValidationLevel.ERROR, ValidationLevel.CRITICAL] for issue in issues) and
-                (confidence_score >= 0.8 or total_cells == 0)  # Allow empty data
-            )
+            is_valid = not any(
+                issue.level in [ValidationLevel.ERROR, ValidationLevel.CRITICAL]
+                for issue in issues
+            ) and (
+                confidence_score >= 0.8 or total_cells == 0
+            )  # Allow empty data
 
             result = ValidationResult(
                 is_valid=is_valid,
@@ -210,11 +225,13 @@ class DataValidator:
                 issues=issues,
                 data_types=data_types,
                 statistics=statistics,
-                confidence_score=confidence_score
+                confidence_score=confidence_score,
             )
 
-            logger.info(f"Validation completed: {valid_rows}/{len(data)} rows valid, "
-                       f"confidence: {confidence_score:.2f}")
+            logger.info(
+                f"Validation completed: {valid_rows}/{len(data)} rows valid, "
+                f"confidence: {confidence_score:.2f}"
+            )
             return result
 
         except Exception as e:
@@ -222,10 +239,15 @@ class DataValidator:
             logger.error(error_msg, extra={"error": str(e)})
             raise DataExtractionException(
                 error_msg,
-                context={"rows": len(data) if data else 0, "columns": len(headers) if headers else 0}
+                context={
+                    "rows": len(data) if data else 0,
+                    "columns": len(headers) if headers else 0,
+                },
             ) from e
 
-    def _auto_detect_validation_rules(self, data: List[List[Any]], headers: List[str]) -> List[ValidationRule]:
+    def _auto_detect_validation_rules(
+        self, data: List[List[Any]], headers: List[str]
+    ) -> List[ValidationRule]:
         """
         Automatically detect validation rules based on data patterns.
 
@@ -242,11 +264,19 @@ class DataValidator:
         rules = []
         for col_idx, header in enumerate(headers):
             # Sample values from this column
-            column_values = [row[col_idx] for row in data if col_idx < len(row) and row[col_idx] is not None]
+            column_values = [
+                row[col_idx]
+                for row in data
+                if col_idx < len(row) and row[col_idx] is not None
+            ]
 
             if not column_values:
                 # Empty column - default to string type
-                rules.append(ValidationRule(name=header, data_type=DataType.STRING, required=False))
+                rules.append(
+                    ValidationRule(
+                        name=header, data_type=DataType.STRING, required=False
+                    )
+                )
                 continue
 
             # Detect data type
@@ -256,7 +286,8 @@ class DataValidator:
             rule = ValidationRule(
                 name=header,
                 data_type=detected_type,
-                required=len(column_values) > len(data) * 0.8  # Required if >80% filled
+                required=len(column_values)
+                > len(data) * 0.8,  # Required if >80% filled
             )
 
             # Add constraints based on data
@@ -266,7 +297,9 @@ class DataValidator:
                 rule.max_length = max(lengths) if lengths else None
 
             elif detected_type in [DataType.INTEGER, DataType.FLOAT]:
-                numeric_values = [float(val) for val in column_values if self._is_numeric(val)]
+                numeric_values = [
+                    float(val) for val in column_values if self._is_numeric(val)
+                ]
                 if numeric_values:
                     rule.min_value = min(numeric_values)
                     rule.max_value = max(numeric_values)
@@ -315,7 +348,9 @@ class DataValidator:
 
         return best_type
 
-    def _validate_cell(self, value: Any, rule: ValidationRule, row: int, column: str) -> List[ValidationIssue]:
+    def _validate_cell(
+        self, value: Any, rule: ValidationRule, row: int, column: str
+    ) -> List[ValidationIssue]:
         """
         Validate a single cell value against a rule.
 
@@ -332,15 +367,17 @@ class DataValidator:
 
         # Check required constraint
         if rule.required and value is None:
-            issues.append(ValidationIssue(
-                level=ValidationLevel.ERROR,
-                code="REQUIRED_VALUE_MISSING",
-                message=f"Required value is missing",
-                row=row,
-                column=column,
-                value=value,
-                expected_type=rule.data_type
-            ))
+            issues.append(
+                ValidationIssue(
+                    level=ValidationLevel.ERROR,
+                    code="REQUIRED_VALUE_MISSING",
+                    message=f"Required value is missing",
+                    row=row,
+                    column=column,
+                    value=value,
+                    expected_type=rule.data_type,
+                )
+            )
             return issues
 
         # If value is None and not required, skip other validations
@@ -349,15 +386,17 @@ class DataValidator:
 
         # Validate data type
         if not self._type_validators[rule.data_type](value):
-            issues.append(ValidationIssue(
-                level=ValidationLevel.ERROR,
-                code="INVALID_DATA_TYPE",
-                message=f"Value is not a valid {rule.data_type.value}",
-                row=row,
-                column=column,
-                value=value,
-                expected_type=rule.data_type
-            ))
+            issues.append(
+                ValidationIssue(
+                    level=ValidationLevel.ERROR,
+                    code="INVALID_DATA_TYPE",
+                    message=f"Value is not a valid {rule.data_type.value}",
+                    row=row,
+                    column=column,
+                    value=value,
+                    expected_type=rule.data_type,
+                )
+            )
             return issues
 
         # Validate constraints
@@ -365,84 +404,103 @@ class DataValidator:
 
         # Length constraints
         if rule.min_length is not None and len(str_value) < rule.min_length:
-            issues.append(ValidationIssue(
-                level=ValidationLevel.WARNING,
-                code="VALUE_TOO_SHORT",
-                message=f"Value is shorter than minimum length {rule.min_length}",
-                row=row,
-                column=column,
-                value=value,
-                constraint=f"min_length={rule.min_length}"
-            ))
+            issues.append(
+                ValidationIssue(
+                    level=ValidationLevel.WARNING,
+                    code="VALUE_TOO_SHORT",
+                    message=f"Value is shorter than minimum length {rule.min_length}",
+                    row=row,
+                    column=column,
+                    value=value,
+                    constraint=f"min_length={rule.min_length}",
+                )
+            )
 
         if rule.max_length is not None and len(str_value) > rule.max_length:
-            issues.append(ValidationIssue(
-                level=ValidationLevel.WARNING,
-                code="VALUE_TOO_LONG",
-                message=f"Value exceeds maximum length {rule.max_length}",
-                row=row,
-                column=column,
-                value=value,
-                constraint=f"max_length={rule.max_length}"
-            ))
+            issues.append(
+                ValidationIssue(
+                    level=ValidationLevel.WARNING,
+                    code="VALUE_TOO_LONG",
+                    message=f"Value exceeds maximum length {rule.max_length}",
+                    row=row,
+                    column=column,
+                    value=value,
+                    constraint=f"max_length={rule.max_length}",
+                )
+            )
 
         # Numeric constraints
         if rule.min_value is not None or rule.max_value is not None:
             try:
-                numeric_value = float(str_value.replace(',', '').replace('$', '').replace('%', ''))
+                numeric_value = float(
+                    str_value.replace(",", "").replace("$", "").replace("%", "")
+                )
                 if rule.min_value is not None and numeric_value < rule.min_value:
-                    issues.append(ValidationIssue(
-                        level=ValidationLevel.WARNING,
-                        code="VALUE_TOO_SMALL",
-                        message=f"Value is less than minimum {rule.min_value}",
-                        row=row,
-                        column=column,
-                        value=value,
-                        constraint=f"min_value={rule.min_value}"
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            level=ValidationLevel.WARNING,
+                            code="VALUE_TOO_SMALL",
+                            message=f"Value is less than minimum {rule.min_value}",
+                            row=row,
+                            column=column,
+                            value=value,
+                            constraint=f"min_value={rule.min_value}",
+                        )
+                    )
 
                 if rule.max_value is not None and numeric_value > rule.max_value:
-                    issues.append(ValidationIssue(
-                        level=ValidationLevel.WARNING,
-                        code="VALUE_TOO_LARGE",
-                        message=f"Value exceeds maximum {rule.max_value}",
-                        row=row,
-                        column=column,
-                        value=value,
-                        constraint=f"max_value={rule.max_value}"
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            level=ValidationLevel.WARNING,
+                            code="VALUE_TOO_LARGE",
+                            message=f"Value exceeds maximum {rule.max_value}",
+                            row=row,
+                            column=column,
+                            value=value,
+                            constraint=f"max_value={rule.max_value}",
+                        )
+                    )
             except (ValueError, TypeError):
                 pass  # Skip numeric validation if conversion fails
 
         # Pattern constraint
         if rule.pattern:
             if not re.match(rule.pattern, str_value):
-                issues.append(ValidationIssue(
-                    level=ValidationLevel.WARNING,
-                    code="PATTERN_MISMATCH",
-                    message=f"Value does not match required pattern",
-                    row=row,
-                    column=column,
-                    value=value,
-                    constraint=f"pattern={rule.pattern}"
-                ))
+                issues.append(
+                    ValidationIssue(
+                        level=ValidationLevel.WARNING,
+                        code="PATTERN_MISMATCH",
+                        message=f"Value does not match required pattern",
+                        row=row,
+                        column=column,
+                        value=value,
+                        constraint=f"pattern={rule.pattern}",
+                    )
+                )
 
         # Allowed values constraint
         if rule.allowed_values and value not in rule.allowed_values:
-            issues.append(ValidationIssue(
-                level=ValidationLevel.WARNING,
-                code="VALUE_NOT_ALLOWED",
-                message=f"Value is not in the allowed set",
-                row=row,
-                column=column,
-                value=value,
-                constraint=f"allowed_values={list(rule.allowed_values)}"
-            ))
+            issues.append(
+                ValidationIssue(
+                    level=ValidationLevel.WARNING,
+                    code="VALUE_NOT_ALLOWED",
+                    message=f"Value is not in the allowed set",
+                    row=row,
+                    column=column,
+                    value=value,
+                    constraint=f"allowed_values={list(rule.allowed_values)}",
+                )
+            )
 
         return issues
 
-    def _calculate_statistics(self, data: List[List[Any]], headers: List[str],
-                             rules: List[ValidationRule], issues: List[ValidationIssue]) -> Dict[str, Any]:
+    def _calculate_statistics(
+        self,
+        data: List[List[Any]],
+        headers: List[str],
+        rules: List[ValidationRule],
+        issues: List[ValidationIssue],
+    ) -> Dict[str, Any]:
         """
         Calculate statistics about the data and validation results.
 
@@ -461,7 +519,7 @@ class DataValidator:
             "empty_cells": 0,
             "data_type_distribution": {},
             "issue_distribution": {},
-            "completeness_by_column": {}
+            "completeness_by_column": {},
         }
 
         # Count issues by level
@@ -475,8 +533,9 @@ class DataValidator:
         data_type_dist = stats["data_type_distribution"]
 
         for col_idx, header in enumerate(headers):
-            non_empty_count = sum(1 for row in data
-                                if col_idx < len(row) and row[col_idx] is not None)
+            non_empty_count = sum(
+                1 for row in data if col_idx < len(row) and row[col_idx] is not None
+            )
             completeness = non_empty_count / len(data) if data else 0
             completeness_by_col[header] = completeness
 
@@ -492,8 +551,9 @@ class DataValidator:
 
         return stats
 
-    def _calculate_confidence_score(self, valid_cells: int, total_cells: int,
-                                   issues: List[ValidationIssue]) -> float:
+    def _calculate_confidence_score(
+        self, valid_cells: int, total_cells: int, issues: List[ValidationIssue]
+    ) -> float:
         """
         Calculate overall confidence score for the data.
 
@@ -512,8 +572,13 @@ class DataValidator:
         base_score = valid_cells / total_cells
 
         # Penalty for issues
-        error_penalty = sum(1 for issue in issues if issue.level == ValidationLevel.ERROR) / total_cells
-        warning_penalty = sum(1 for issue in issues if issue.level == ValidationLevel.WARNING) / (total_cells * 2)
+        error_penalty = (
+            sum(1 for issue in issues if issue.level == ValidationLevel.ERROR)
+            / total_cells
+        )
+        warning_penalty = sum(
+            1 for issue in issues if issue.level == ValidationLevel.WARNING
+        ) / (total_cells * 2)
 
         # Calculate final score
         confidence_score = max(0.0, base_score - error_penalty - warning_penalty)
@@ -531,7 +596,7 @@ class DataValidator:
         if value is None:
             return not check_required
         try:
-            int(str(value).replace(',', ''))
+            int(str(value).replace(",", ""))
             return True
         except (ValueError, TypeError):
             return False
@@ -541,7 +606,7 @@ class DataValidator:
         if value is None:
             return not check_required
         try:
-            float(str(value).replace(',', ''))
+            float(str(value).replace(",", ""))
             return True
         except (ValueError, TypeError):
             return False
@@ -553,7 +618,7 @@ class DataValidator:
         if isinstance(value, bool):
             return True
         if isinstance(value, str):
-            return value.lower() in ['true', 'false', 'yes', 'no', '1', '0']
+            return value.lower() in ["true", "false", "yes", "no", "1", "0"]
         return isinstance(value, (int, float)) and value in [0, 1]
 
     def _validate_date(self, value: Any, check_required: bool = True) -> bool:
@@ -565,7 +630,7 @@ class DataValidator:
         if isinstance(value, str):
             try:
                 # Try common date formats
-                for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d']:
+                for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%Y/%m/%d"]:
                     try:
                         datetime.strptime(value, fmt)
                         return True
@@ -585,7 +650,11 @@ class DataValidator:
         if isinstance(value, str):
             try:
                 # Try common datetime formats
-                for fmt in ['%Y-%m-%d %H:%M:%S', '%m/%d/%Y %H:%M:%S', '%Y-%m-%dT%H:%M:%S']:
+                for fmt in [
+                    "%Y-%m-%d %H:%M:%S",
+                    "%m/%d/%Y %H:%M:%S",
+                    "%Y-%m-%dT%H:%M:%S",
+                ]:
                     try:
                         datetime.strptime(value, fmt)
                         return True
@@ -602,7 +671,7 @@ class DataValidator:
             return not check_required
         if not isinstance(value, str):
             return False
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         return bool(re.match(email_pattern, value))
 
     def _validate_phone(self, value: Any, check_required: bool = True) -> bool:
@@ -612,8 +681,8 @@ class DataValidator:
         if not isinstance(value, str):
             return False
         # Remove common formatting characters
-        phone = re.sub(r'[\s\-\(\)\+]', '', value)
-        phone_pattern = r'^\+?[1-9]\d{6,14}$'  # E.164 format
+        phone = re.sub(r"[\s\-\(\)\+]", "", value)
+        phone_pattern = r"^\+?[1-9]\d{6,14}$"  # E.164 format
         return bool(re.match(phone_pattern, phone))
 
     def _validate_url(self, value: Any, check_required: bool = True) -> bool:
@@ -622,7 +691,7 @@ class DataValidator:
             return not check_required
         if not isinstance(value, str):
             return False
-        url_pattern = r'^https?://[^\s/$.?#].[^\s]*$'
+        url_pattern = r"^https?://[^\s/$.?#].[^\s]*$"
         return bool(re.match(url_pattern, value))
 
     def _validate_currency(self, value: Any, check_required: bool = True) -> bool:
@@ -633,7 +702,7 @@ class DataValidator:
             return True
         if isinstance(value, str):
             # Remove currency symbols and commas
-            clean_value = re.sub(r'[$€£¥\s,]', '', value)
+            clean_value = re.sub(r"[$€£¥\s,]", "", value)
             try:
                 float(clean_value)
                 return True
@@ -649,7 +718,7 @@ class DataValidator:
             return 0 <= value <= 100
         if isinstance(value, str):
             # Remove % sign
-            clean_value = value.replace('%', '').strip()
+            clean_value = value.replace("%", "").strip()
             try:
                 num = float(clean_value)
                 return 0 <= num <= 100
@@ -681,7 +750,7 @@ class DataValidator:
     def _is_numeric(self, value: Any) -> bool:
         """Check if value can be converted to a number."""
         try:
-            float(str(value).replace(',', ''))
+            float(str(value).replace(",", ""))
             return True
         except (ValueError, TypeError):
             return False

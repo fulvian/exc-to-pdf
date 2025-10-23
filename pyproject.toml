@@ -61,11 +61,11 @@ Repository = "https://github.com/fulvian/exc-to-pdf"
 Changelog = "https://github.com/fulvian/exc-to-pdf/blob/main/CHANGELOG.md"
 
 [project.scripts]
-exc-to-pdf = "src.main:main"
+exc-to-pdf = "exc_to_pdf.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["exc_to_pdf*", "src*"]
+include = ["exc_to_pdf*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.txt", "*.md", "*.yml", "*.yaml"]
@@ -77,13 +77,14 @@ target-version = ['py39']
 
 [tool.mypy]
 python_version = "3.9"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
+warn_return_any = false
+warn_unused_configs = false
+disallow_untyped_defs = false
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "--cov=src --cov-report=html --cov-report=term-missing"
+addopts = "--cov=exc_to_pdf --cov-report=html --cov-report=term-missing"

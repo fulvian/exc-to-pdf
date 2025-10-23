@@ -29,6 +29,7 @@ try:
     from .templates.style_presets import StylePresets
     from .i18n.locale_manager import LocaleManager
     from .chart.chart_extractor import ChartExtractor
+
     ADVANCED_FEATURES_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"Advanced features not available: {e}")
@@ -44,7 +45,7 @@ class ExcelToPDFClickGroup(click.Group):
         prog_name: Optional[str] = None,
         complete_var: Optional[str] = None,
         standalone_mode: bool = False,
-        **extra: Any
+        **extra: Any,
     ) -> Any:
         """Override main to provide custom exception handling."""
         try:
@@ -53,7 +54,7 @@ class ExcelToPDFClickGroup(click.Group):
                 prog_name=prog_name,
                 complete_var=complete_var,
                 standalone_mode=standalone_mode,
-                **extra
+                **extra,
             )
         except ExcelReaderError as e:
             # Handle our custom exceptions with user-friendly messages
@@ -64,32 +65,44 @@ class ExcelToPDFClickGroup(click.Group):
             # Provide helpful suggestions based on error type
             if isinstance(e, InvalidFileException):
                 click.secho("\n💡 Suggestions:", fg="yellow")
-                click.secho("   • Check if the file exists and is readable", fg="yellow")
-                click.secho("   • Ensure the file is a valid Excel file (.xlsx, .xls)", fg="yellow")
+                click.secho(
+                    "   • Check if the file exists and is readable", fg="yellow"
+                )
+                click.secho(
+                    "   • Ensure the file is a valid Excel file (.xlsx, .xls)",
+                    fg="yellow",
+                )
                 click.secho("   • Try using the absolute file path", fg="yellow")
             elif isinstance(e, PDFGenerationException):
                 click.secho("\n💡 Suggestions:", fg="yellow")
                 click.secho("   • Check if output directory is writable", fg="yellow")
-                click.secho("   • Try running with --verbose for more details", fg="yellow")
-                click.secho("   • Ensure sufficient disk space is available", fg="yellow")
+                click.secho(
+                    "   • Try running with --verbose for more details", fg="yellow"
+                )
+                click.secho(
+                    "   • Ensure sufficient disk space is available", fg="yellow"
+                )
 
             sys.exit(1)
         except Exception as e:
             # Handle unexpected exceptions
             click.secho(f"❌ Unexpected error: {str(e)}", fg="red", bold=True)
             if ctx := click.get_current_context(silent=True):
-                if ctx.params.get('verbose'):
+                if ctx.params.get("verbose"):
                     import traceback
+
                     click.secho("\n📋 Full traceback:", fg="red")
                     click.secho(traceback.format_exc(), fg="red")
-            click.secho("\n💡 Try running with --verbose for more information", fg="yellow")
+            click.secho(
+                "\n💡 Try running with --verbose for more information", fg="yellow"
+            )
             sys.exit(1)
 
 
 @click.group(cls=ExcelToPDFClickGroup, invoke_without_command=True)
-@click.option('--verbose', '-v', is_flag=True, help='Enable verbose output')
-@click.option('--quiet', '-q', is_flag=True, help='Suppress all output except errors')
-@click.option('--version', is_flag=True, help='Show version information')
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
+@click.option("--quiet", "-q", is_flag=True, help="Suppress all output except errors")
+@click.option("--version", is_flag=True, help="Show version information")
 @click.pass_context
 def cli(ctx: click.Context, verbose: bool, quiet: bool, version: bool) -> None:
     """Excel to PDF converter optimized for Google NotebookLM.
@@ -99,12 +112,13 @@ def cli(ctx: click.Context, verbose: bool, quiet: bool, version: bool) -> None:
     """
     # Store global options in context
     ctx.ensure_object(dict)
-    ctx.obj['verbose'] = verbose
-    ctx.obj['quiet'] = quiet
+    ctx.obj["verbose"] = verbose
+    ctx.obj["quiet"] = quiet
 
     # Configure logging based on verbosity
     if verbose:
         import logging
+
         logging.basicConfig(level=logging.INFO)
         structlog.configure(
             processors=[
@@ -126,6 +140,7 @@ def cli(ctx: click.Context, verbose: bool, quiet: bool, version: bool) -> None:
 
     if version:
         from . import __version__
+
         click.echo(f"exc-to-pdf version {__version__}")
         ctx.exit()
 
@@ -136,29 +151,78 @@ def cli(ctx: click.Context, verbose: bool, quiet: bool, version: bool) -> None:
 
 
 @cli.command()
-@click.argument('input_file', type=click.Path(exists=True, dir_okay=False, resolve_path=True))
-@click.argument('output_file', type=click.Path(dir_okay=False, resolve_path=True), required=False)
-@click.option('--config', '-c', type=click.Path(exists=True, dir_okay=False),
-              help='Path to configuration file')
-@click.option('--template', '-t',
-              type=click.Choice(['modern', 'corporate', 'academic', 'financial', 'minimal', 'creative'], case_sensitive=False),
-              default='modern', help='PDF template style (default: modern)')
-@click.option('--orientation', '-o',
-              type=click.Choice(['portrait', 'landscape'], case_sensitive=False),
-              default='portrait', help='Page orientation (default: portrait)')
-@click.option('--sheet', '-s', help='Specific worksheet name to convert (default: all worksheets)')
-@click.option('--no-bookmarks', is_flag=True, help='Disable automatic bookmark generation')
-@click.option('--no-metadata', is_flag=True, help='Disable AI-optimized metadata')
-@click.option('--margin-top', type=float, default=72, help='Top margin in points (default: 72)')
-@click.option('--margin-bottom', type=float, default=72, help='Bottom margin in points (default: 72)')
-@click.option('--margin-left', type=float, default=72, help='Left margin in points (default: 72)')
-@click.option('--margin-right', type=float, default=72, help='Right margin in points (default: 72)')
+@click.argument(
+    "input_file", type=click.Path(exists=True, dir_okay=False, resolve_path=True)
+)
+@click.argument(
+    "output_file", type=click.Path(dir_okay=False, resolve_path=True), required=False
+)
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to configuration file",
+)
+@click.option(
+    "--template",
+    "-t",
+    type=click.Choice(
+        ["modern", "corporate", "academic", "financial", "minimal", "creative"],
+        case_sensitive=False,
+    ),
+    default="modern",
+    help="PDF template style (default: modern)",
+)
+@click.option(
+    "--orientation",
+    "-o",
+    type=click.Choice(["portrait", "landscape"], case_sensitive=False),
+    default="portrait",
+    help="Page orientation (default: portrait)",
+)
+@click.option(
+    "--sheet", "-s", help="Specific worksheet name to convert (default: all worksheets)"
+)
+@click.option(
+    "--no-bookmarks", is_flag=True, help="Disable automatic bookmark generation"
+)
+@click.option("--no-metadata", is_flag=True, help="Disable AI-optimized metadata")
+@click.option(
+    "--margin-top", type=float, default=72, help="Top margin in points (default: 72)"
+)
+@click.option(
+    "--margin-bottom",
+    type=float,
+    default=72,
+    help="Bottom margin in points (default: 72)",
+)
+@click.option(
+    "--margin-left", type=float, default=72, help="Left margin in points (default: 72)"
+)
+@click.option(
+    "--margin-right",
+    type=float,
+    default=72,
+    help="Right margin in points (default: 72)",
+)
 # Advanced features options
-@click.option('--include-charts', is_flag=True, help='Include Excel charts in PDF output')
-@click.option('--locale', '-l', help='Force locale for internationalization (e.g., en_US, it_IT)')
-@click.option('--rtl', is_flag=True, help='Enable right-to-left language support')
-@click.option('--branding', type=click.Path(exists=True, dir_okay=False), help='Path to branding configuration file')
-@click.option('--preserve-formatting', is_flag=True, help='Preserve Excel conditional formatting in PDF')
+@click.option(
+    "--include-charts", is_flag=True, help="Include Excel charts in PDF output"
+)
+@click.option(
+    "--locale", "-l", help="Force locale for internationalization (e.g., en_US, it_IT)"
+)
+@click.option("--rtl", is_flag=True, help="Enable right-to-left language support")
+@click.option(
+    "--branding",
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to branding configuration file",
+)
+@click.option(
+    "--preserve-formatting",
+    is_flag=True,
+    help="Preserve Excel conditional formatting in PDF",
+)
 @click.pass_context
 def convert(
     ctx: click.Context,
@@ -185,19 +249,21 @@ def convert(
     INPUT_FILE: Path to the Excel file to convert
     OUTPUT_FILE: Path for the output PDF file (optional, defaults to INPUT_FILE.pdf)
     """
-    verbose = ctx.obj['verbose']
-    quiet = ctx.obj['quiet']
+    verbose = ctx.obj["verbose"]
+    quiet = ctx.obj["quiet"]
 
     try:
         # Determine output file if not provided
         if not output_file:
             input_path = Path(input_file)
-            output_file = str(input_path.with_suffix('.pdf'))
+            output_file = str(input_path.with_suffix(".pdf"))
 
         # Validate output directory
         output_path = Path(output_file)
         if output_path.exists() and not output_path.is_file():
-            raise click.ClickException(f"Output path exists but is not a file: {output_file}")
+            raise click.ClickException(
+                f"Output path exists but is not a file: {output_file}"
+            )
 
         output_dir = output_path.parent
         if not output_dir.exists():
@@ -259,9 +325,12 @@ def convert(
                 if rtl:
                     # Force RTL locale if not specified
                     if not locale:
-                        detected_locale = 'ar_EG'
+                        detected_locale = "ar_EG"
                         if not quiet:
-                            click.secho("🔄 RTL support enabled, using Arabic locale", fg="yellow")
+                            click.secho(
+                                "🔄 RTL support enabled, using Arabic locale",
+                                fg="yellow",
+                            )
 
                 locale_manager.set_locale(detected_locale)
                 if not quiet:
@@ -283,7 +352,9 @@ def convert(
             # Conditional formatting preservation
             if preserve_formatting:
                 if not quiet:
-                    click.secho("🎨 Conditional formatting preservation enabled", fg="blue")
+                    click.secho(
+                        "🎨 Conditional formatting preservation enabled", fg="blue"
+                    )
                 # TODO: Enable conditional formatting preservation
 
         else:
@@ -293,12 +364,15 @@ def convert(
                 (locale, "Internationalization"),
                 (rtl, "RTL support"),
                 (branding, "Branding"),
-                (preserve_formatting, "Conditional formatting")
+                (preserve_formatting, "Conditional formatting"),
             ]
 
             for option_enabled, option_name in advanced_options:
                 if option_enabled:
-                    click.secho(f"⚠️  {option_name} requested but not available - missing dependencies", fg="yellow")
+                    click.secho(
+                        f"⚠️  {option_name} requested but not available - missing dependencies",
+                        fg="yellow",
+                    )
 
         # Initialize PDF generator
         if verbose:
@@ -332,13 +406,18 @@ def config() -> None:
     pass
 
 
-@config.command('validate')
-@click.option('--config', '-c', type=click.Path(exists=True, dir_okay=False),
-              required=True, help='Configuration file to validate')
+@config.command("validate")
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True, dir_okay=False),
+    required=True,
+    help="Configuration file to validate",
+)
 @click.pass_context
 def validate_config(ctx: click.Context, config: str) -> None:
     """Validate configuration file."""
-    quiet = ctx.obj['quiet']
+    quiet = ctx.obj["quiet"]
 
     try:
         if not quiet:
@@ -351,13 +430,18 @@ def validate_config(ctx: click.Context, config: str) -> None:
         raise ConfigurationException(f"Configuration validation failed: {str(e)}")
 
 
-@config.command('template')
-@click.option('--output', '-o', type=click.Path(dir_okay=False),
-              default='exc-to-pdf-config.toml', help='Output configuration file')
+@config.command("template")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(dir_okay=False),
+    default="exc-to-pdf-config.toml",
+    help="Output configuration file",
+)
 @click.pass_context
 def create_template(ctx: click.Context, output: str) -> None:
     """Generate a template configuration file."""
-    quiet = ctx.obj['quiet']
+    quiet = ctx.obj["quiet"]
 
     try:
         if not quiet:
@@ -387,7 +471,7 @@ optimize_for_notebooklm = true
 include_bookmarks = true
 """
 
-        with open(output, 'w') as f:
+        with open(output, "w") as f:
             f.write(template_content)
 
         click.secho(f"✅ Configuration template created: {output}", fg="green")
@@ -401,5 +485,5 @@ def main() -> None:
     cli(obj={})
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

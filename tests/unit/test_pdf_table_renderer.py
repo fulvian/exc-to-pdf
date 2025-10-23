@@ -12,9 +12,9 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import Table, LongTable, KeepTogether, TableStyle
 
-from src.config.pdf_config import PDFConfig
-from src.pdf_table_renderer import PDFTableRenderer
-from src.exceptions import TableRenderingException
+from exc_to_pdf.config.pdf_config import PDFConfig
+from exc_to_pdf.pdf_table_renderer import PDFTableRenderer
+from exc_to_pdf.exceptions import TableRenderingException
 
 
 class TestPDFTableRenderer:
@@ -26,10 +26,10 @@ class TestPDFTableRenderer:
 
         assert isinstance(renderer.config, PDFConfig)
         assert renderer.page_width == A4[0] - (72 + 72)  # Default margins
-        assert 'header_bg' in renderer.colors
-        assert 'header_text' in renderer.colors
-        assert 'row_even' in renderer.colors
-        assert 'row_odd' in renderer.colors
+        assert "header_bg" in renderer.colors
+        assert "header_text" in renderer.colors
+        assert "row_even" in renderer.colors
+        assert "row_odd" in renderer.colors
 
     def test_custom_config_initialization(self) -> None:
         """Test PDFTableRenderer initialization with custom config."""
@@ -38,15 +38,15 @@ class TestPDFTableRenderer:
             margin_right=50,
             header_background="#FF0000",
             header_text_color="#00FF00",
-            alternate_rows=False
+            alternate_rows=False,
         )
         renderer = PDFTableRenderer(config)
 
         assert renderer.config is config
         expected_width = A4[0] - (50 + 50)
         assert renderer.page_width == expected_width
-        assert renderer.colors['header_bg'] == colors.HexColor('#FF0000')
-        assert renderer.colors['header_text'] == colors.HexColor('#00FF00')
+        assert renderer.colors["header_bg"] == colors.HexColor("#FF0000")
+        assert renderer.colors["header_text"] == colors.HexColor("#00FF00")
 
     def test_render_table_with_headers_and_data(self) -> None:
         """Test rendering a table with headers and data."""
@@ -55,7 +55,7 @@ class TestPDFTableRenderer:
         data = [
             ["Alice", 25, "New York"],
             ["Bob", 30, "Los Angeles"],
-            ["Charlie", 35, "Chicago"]
+            ["Charlie", 35, "Chicago"],
         ]
 
         table = renderer.render_table(data, headers)
@@ -68,10 +68,7 @@ class TestPDFTableRenderer:
     def test_render_table_with_data_only(self) -> None:
         """Test rendering a table with data only (no headers)."""
         renderer = PDFTableRenderer()
-        data = [
-            ["Alice", 25, "New York"],
-            ["Bob", 30, "Los Angeles"]
-        ]
+        data = [["Alice", 25, "New York"], ["Bob", 30, "Los Angeles"]]
 
         table = renderer.render_table(data, [])
 
@@ -127,7 +124,7 @@ class TestPDFTableRenderer:
             ["Diana", 28],
             ["Eve", 32],
             ["Frank", 40],
-            ["Grace", 27]
+            ["Grace", 27],
         ]
 
         tables = renderer.handle_large_table(data, headers)
@@ -141,13 +138,7 @@ class TestPDFTableRenderer:
         config = PDFConfig(max_table_rows_per_page=3)
         renderer = PDFTableRenderer(config)
 
-        data = [
-            ["Alice", 25],
-            ["Bob", 30],
-            ["Charlie", 35],
-            ["Diana", 28],
-            ["Eve", 32]
-        ]
+        data = [["Alice", 25], ["Bob", 30], ["Charlie", 35], ["Diana", 28], ["Eve", 32]]
 
         tables = renderer.handle_large_table(data, [])
 
@@ -159,10 +150,7 @@ class TestPDFTableRenderer:
         """Test basic column width calculation."""
         renderer = PDFTableRenderer()
         headers = ["Name", "Age", "City"]
-        data = [
-            ["Alice", 25, "New York"],
-            ["Bob", 30, "Los Angeles"]
-        ]
+        data = [["Alice", 25, "New York"], ["Bob", 30, "Los Angeles"]]
 
         widths = renderer.calculate_column_widths(data, headers, 400)
 
@@ -189,8 +177,11 @@ class TestPDFTableRenderer:
         renderer = PDFTableRenderer()
         headers = ["Short", "Very Long Column Header That Exceeds Normal Width"]
         data = [
-            ["A", "This is a very long content that should trigger maximum width constraints"],
-            ["B", "Another long content piece to test width calculation behavior"]
+            [
+                "A",
+                "This is a very long content that should trigger maximum width constraints",
+            ],
+            ["B", "Another long content piece to test width calculation behavior"],
         ]
 
         widths = renderer.calculate_column_widths(data, headers, 500)
@@ -222,7 +213,7 @@ class TestPDFTableRenderer:
 
         assert isinstance(style, TableStyle)
         # Check that style elements are present
-        assert hasattr(style, '_cmds')
+        assert hasattr(style, "_cmds")
         assert len(style._cmds) > 0
 
     def test_create_table_style_without_headers(self) -> None:
@@ -233,7 +224,7 @@ class TestPDFTableRenderer:
 
         assert isinstance(style, TableStyle)
         # Check that style elements are present
-        assert hasattr(style, '_cmds')
+        assert hasattr(style, "_cmds")
         assert len(style._cmds) > 0
 
     def test_alternate_rows_styling(self) -> None:
@@ -271,12 +262,12 @@ class TestPDFTableRenderer:
 
         info = renderer.get_table_info(data, headers)
 
-        assert info['row_count'] == 2
-        assert info['column_count'] == 3
-        assert info['has_headers'] is True
-        assert info['requires_splitting'] is False  # Small table
-        assert info['estimated_pages'] == 1
-        assert 'estimated_width' in info
+        assert info["row_count"] == 2
+        assert info["column_count"] == 3
+        assert info["has_headers"] is True
+        assert info["requires_splitting"] is False  # Small table
+        assert info["estimated_pages"] == 1
+        assert "estimated_width" in info
 
     def test_get_table_info_large_table(self) -> None:
         """Test table info for large table."""
@@ -287,13 +278,13 @@ class TestPDFTableRenderer:
 
         info = renderer.get_table_info(data, headers)
 
-        assert info['row_count'] == 10
-        assert info['column_count'] == 2
-        assert info['has_headers'] is True
-        assert info['requires_splitting'] is True  # Large table
-        assert info['estimated_pages'] == 2  # Should span 2 pages
+        assert info["row_count"] == 10
+        assert info["column_count"] == 2
+        assert info["has_headers"] is True
+        assert info["requires_splitting"] is True  # Large table
+        assert info["estimated_pages"] == 2  # Should span 2 pages
 
-    @patch('src.pdf_table_renderer.logger')
+    @patch("src.pdf_table_renderer.logger")
     def test_render_table_logging(self, mock_logger: Mock) -> None:
         """Test that table rendering logs appropriate information."""
         renderer = PDFTableRenderer()
@@ -306,10 +297,10 @@ class TestPDFTableRenderer:
         mock_logger.info.assert_called()
         call_args = mock_logger.info.call_args
         assert "Table rendered successfully" in call_args[0][0]
-        assert call_args[1]['extra']['rows'] == 2
-        assert call_args[1]['extra']['columns'] == 2
+        assert call_args[1]["extra"]["rows"] == 2
+        assert call_args[1]["extra"]["columns"] == 2
 
-    @patch('src.pdf_table_renderer.logger')
+    @patch("src.pdf_table_renderer.logger")
     def test_render_table_error_logging(self, mock_logger: Mock) -> None:
         """Test that table rendering errors are logged properly."""
         renderer = PDFTableRenderer()
@@ -327,15 +318,15 @@ class TestPDFTableRenderer:
         config = PDFConfig(
             header_background="#123456",
             header_text_color="#FEDCBA",
-            alternate_row_color="#ABCDEF"
+            alternate_row_color="#ABCDEF",
         )
         renderer = PDFTableRenderer(config)
 
-        assert renderer.colors['header_bg'] == colors.HexColor('#123456')
-        assert renderer.colors['header_text'] == colors.HexColor('#FEDCBA')
+        assert renderer.colors["header_bg"] == colors.HexColor("#123456")
+        assert renderer.colors["header_text"] == colors.HexColor("#FEDCBA")
         # alternate_row key only exists when alternate_rows is True
         if config.alternate_rows:
-            assert renderer.colors['alternate_row'] == colors.HexColor('#ABCDEF')
+            assert renderer.colors["alternate_row"] == colors.HexColor("#ABCDEF")
 
     def test_render_table_with_title_parameter(self) -> None:
         """Test that title parameter is accepted (though not used in current implementation)."""

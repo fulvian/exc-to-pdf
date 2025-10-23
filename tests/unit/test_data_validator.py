@@ -10,12 +10,16 @@ import pytest
 from datetime import datetime, date
 from typing import List, Any
 
-from src.data_validator import (
-    DataValidator, ValidationRule, ValidationResult, ValidationIssue,
-    ValidationLevel, DataType
+from exc_to_pdf.data_validator import (
+    DataValidator,
+    ValidationRule,
+    ValidationResult,
+    ValidationIssue,
+    ValidationLevel,
+    DataType,
 )
-from src.config.excel_config import ExcelConfig
-from src.exceptions import DataExtractionException
+from exc_to_pdf.config.excel_config import ExcelConfig
+from exc_to_pdf.exceptions import DataExtractionException
 
 
 class TestDataValidatorInit:
@@ -159,7 +163,7 @@ class TestValidateTableData:
         data = [
             ["Alice", 25, "alice@example.com"],
             ["Bob", 30, "bob@example.com"],
-            ["Charlie", 35, "charlie@example.com"]
+            ["Charlie", 35, "charlie@example.com"],
         ]
         headers = ["Name", "Age", "Email"]
 
@@ -179,7 +183,7 @@ class TestValidateTableData:
         data = [
             ["Alice", 25, "alice@example.com"],
             [None, 30, "bob@example.com"],  # Missing name
-            ["Charlie", None, "charlie@example.com"]  # Missing age
+            ["Charlie", None, "charlie@example.com"],  # Missing age
         ]
         headers = ["Name", "Age", "Email"]
 
@@ -187,7 +191,7 @@ class TestValidateTableData:
         rules = [
             ValidationRule(name="Name", data_type=DataType.STRING, required=True),
             ValidationRule(name="Age", data_type=DataType.INTEGER, required=True),
-            ValidationRule(name="Email", data_type=DataType.EMAIL, required=True)
+            ValidationRule(name="Email", data_type=DataType.EMAIL, required=True),
         ]
 
         result = validator.validate_table_data(data, headers, rules)
@@ -206,14 +210,16 @@ class TestValidateTableData:
         data = [
             ["Alice", 25, "alice@example.com"],
             ["Bob", 150, "bob@example.com"],  # Age too high
-            ["Charlie", 35, "invalid-email"]  # Invalid email
+            ["Charlie", 35, "invalid-email"],  # Invalid email
         ]
         headers = ["Name", "Age", "Email"]
 
         rules = [
             ValidationRule(name="Name", data_type=DataType.STRING, required=True),
-            ValidationRule(name="Age", data_type=DataType.INTEGER, required=True, max_value=100),
-            ValidationRule(name="Email", data_type=DataType.EMAIL, required=True)
+            ValidationRule(
+                name="Age", data_type=DataType.INTEGER, required=True, max_value=100
+            ),
+            ValidationRule(name="Email", data_type=DataType.EMAIL, required=True),
         ]
 
         result = validator.validate_table_data(data, headers, rules)
@@ -247,14 +253,14 @@ class TestValidateTableData:
         data = [
             ["Alice", "twenty-five", "alice@example.com"],  # Age as string
             ["Bob", 30.5, "bob@example.com"],  # Age as float
-            ["Charlie", 35, "charlie@example.com"]
+            ["Charlie", 35, "charlie@example.com"],
         ]
         headers = ["Name", "Age", "Email"]
 
         rules = [
             ValidationRule(name="Name", data_type=DataType.STRING, required=True),
             ValidationRule(name="Age", data_type=DataType.INTEGER, required=True),
-            ValidationRule(name="Email", data_type=DataType.EMAIL, required=True)
+            ValidationRule(name="Email", data_type=DataType.EMAIL, required=True),
         ]
 
         result = validator.validate_table_data(data, headers, rules)
@@ -263,7 +269,9 @@ class TestValidateTableData:
         assert len(result.issues) >= 2
 
         # Check for type errors
-        type_errors = [issue for issue in result.issues if issue.code == "INVALID_DATA_TYPE"]
+        type_errors = [
+            issue for issue in result.issues if issue.code == "INVALID_DATA_TYPE"
+        ]
         assert len(type_errors) >= 1
 
 
@@ -273,11 +281,7 @@ class TestAutoDetectValidationRules:
     def test_detect_string_column(self):
         """Test detection of string columns."""
         validator = DataValidator()
-        data = [
-            ["Alice"],
-            ["Bob"],
-            ["Charlie"]
-        ]
+        data = [["Alice"], ["Bob"], ["Charlie"]]
         headers = ["Name"]
 
         rules = validator._auto_detect_validation_rules(data, headers)
@@ -290,11 +294,7 @@ class TestAutoDetectValidationRules:
     def test_detect_integer_column(self):
         """Test detection of integer columns."""
         validator = DataValidator()
-        data = [
-            [25],
-            [30],
-            [35]
-        ]
+        data = [[25], [30], [35]]
         headers = ["Age"]
 
         rules = validator._auto_detect_validation_rules(data, headers)
@@ -307,11 +307,7 @@ class TestAutoDetectValidationRules:
     def test_detect_email_column(self):
         """Test detection of email columns."""
         validator = DataValidator()
-        data = [
-            ["alice@example.com"],
-            ["bob@example.com"],
-            ["charlie@example.com"]
-        ]
+        data = [["alice@example.com"], ["bob@example.com"], ["charlie@example.com"]]
         headers = ["Email"]
 
         rules = validator._auto_detect_validation_rules(data, headers)
@@ -325,7 +321,7 @@ class TestAutoDetectValidationRules:
         data = [
             ["Alice", 25, "alice@example.com"],
             ["Bob", 30, "bob@example.com"],
-            ["Charlie", 35, "charlie@example.com"]
+            ["Charlie", 35, "charlie@example.com"],
         ]
         headers = ["Name", "Age", "Email"]
 
@@ -346,16 +342,20 @@ class TestValidationStatistics:
         data = [
             ["Alice", 25, "alice@example.com"],
             ["Bob", 30, "bob@example.com"],
-            [None, 35, "charlie@example.com"]  # One missing value
+            [None, 35, "charlie@example.com"],  # One missing value
         ]
         headers = ["Name", "Age", "Email"]
         rules = [
             ValidationRule(name="Name", data_type=DataType.STRING, required=True),
             ValidationRule(name="Age", data_type=DataType.INTEGER, required=True),
-            ValidationRule(name="Email", data_type=DataType.EMAIL, required=True)
+            ValidationRule(name="Email", data_type=DataType.EMAIL, required=True),
         ]
         issues = [
-            ValidationIssue(level=ValidationLevel.ERROR, code="REQUIRED_VALUE_MISSING", message="Missing")
+            ValidationIssue(
+                level=ValidationLevel.ERROR,
+                code="REQUIRED_VALUE_MISSING",
+                message="Missing",
+            )
         ]
 
         stats = validator._calculate_statistics(data, headers, rules, issues)
@@ -366,7 +366,9 @@ class TestValidationStatistics:
         assert "error" in stats["issue_distribution"]
         assert stats["issue_distribution"]["error"] == 1
         assert len(stats["completeness_by_column"]) == 3
-        assert stats["completeness_by_column"]["Name"] == 2/3  # 2 out of 3 rows have names
+        assert (
+            stats["completeness_by_column"]["Name"] == 2 / 3
+        )  # 2 out of 3 rows have names
 
 
 class TestValidationWithInvalidInput:
@@ -386,9 +388,7 @@ class TestValidationWithInvalidInput:
     def test_validate_with_mismatched_headers(self):
         """Test validation with mismatched headers and data."""
         validator = DataValidator()
-        data = [
-            ["Alice", 25, "extra"]  # 3 values, but only 2 headers
-        ]
+        data = [["Alice", 25, "extra"]]  # 3 values, but only 2 headers
         headers = ["Name", "Age"]
 
         # Should handle gracefully without crashing
@@ -413,7 +413,12 @@ class TestValidationWithInvalidInput:
         # Create a scenario that will cause an exception
         # Mock the _auto_detect_validation_rules to raise an exception
         import unittest.mock
-        with unittest.mock.patch.object(validator, '_auto_detect_validation_rules', side_effect=Exception("Detection failed")):
+
+        with unittest.mock.patch.object(
+            validator,
+            "_auto_detect_validation_rules",
+            side_effect=Exception("Detection failed"),
+        ):
             with pytest.raises(DataExtractionException) as exc_info:
                 validator.validate_table_data([["test"]], ["col1"])
 
@@ -423,11 +428,7 @@ class TestValidationWithInvalidInput:
     def test_auto_detect_validation_rules_empty_column(self):
         """Test auto-detection with completely empty columns."""
         validator = DataValidator()
-        data = [
-            [None, "value2"],
-            [None, "value4"],
-            [None, "value6"]
-        ]
+        data = [[None, "value2"], [None, "value4"], [None, "value6"]]
         headers = ["EmptyCol", "DataCol"]
 
         rules = validator._auto_detect_validation_rules(data, headers)
@@ -482,7 +483,9 @@ class TestValidationWithInvalidInput:
 
         # Test invalid datetime formats
         assert validator._validate_datetime("invalid-datetime") is False
-        assert validator._validate_datetime("2025-13-01 12:00:00") is False  # Invalid month
+        assert (
+            validator._validate_datetime("2025-13-01 12:00:00") is False
+        )  # Invalid month
         assert validator._validate_datetime("") is False
         assert validator._validate_datetime(123) is False
 
@@ -499,7 +502,9 @@ class TestValidationWithInvalidInput:
         validator = DataValidator()
 
         # Test length constraints
-        rule = ValidationRule(name="test", data_type=DataType.STRING, min_length=5, max_length=10)
+        rule = ValidationRule(
+            name="test", data_type=DataType.STRING, min_length=5, max_length=10
+        )
 
         # Test value too short
         issues = validator._validate_cell("abc", rule, 1, "test")
@@ -512,7 +517,9 @@ class TestValidationWithInvalidInput:
         assert issues[0].code == "VALUE_TOO_LONG"
 
         # Test numeric constraints
-        rule = ValidationRule(name="test", data_type=DataType.INTEGER, min_value=10, max_value=100)
+        rule = ValidationRule(
+            name="test", data_type=DataType.INTEGER, min_value=10, max_value=100
+        )
 
         # Test value too small
         issues = validator._validate_cell("5", rule, 1, "test")
@@ -533,7 +540,9 @@ class TestValidationWithInvalidInput:
         validator = DataValidator()
 
         # Test pattern constraint
-        rule = ValidationRule(name="test", data_type=DataType.STRING, pattern=r"^[A-Z]{2}\d{4}$")  # 2 letters + 4 digits
+        rule = ValidationRule(
+            name="test", data_type=DataType.STRING, pattern=r"^[A-Z]{2}\d{4}$"
+        )  # 2 letters + 4 digits
 
         # Valid pattern
         issues = validator._validate_cell("AB1234", rule, 1, "test")
@@ -545,7 +554,11 @@ class TestValidationWithInvalidInput:
         assert issues[0].code == "PATTERN_MISMATCH"
 
         # Test allowed values constraint
-        rule = ValidationRule(name="test", data_type=DataType.STRING, allowed_values={"red", "green", "blue"})
+        rule = ValidationRule(
+            name="test",
+            data_type=DataType.STRING,
+            allowed_values={"red", "green", "blue"},
+        )
 
         # Valid value
         issues = validator._validate_cell("red", rule, 1, "test")
@@ -571,8 +584,12 @@ class TestValidationWithInvalidInput:
         # Test invalid currencies
         assert validator._validate_currency("invalid") is False
         assert validator._validate_currency("") is False
-        assert validator._validate_currency(None, check_required=False) is True  # None handled by check_required=False
-        assert validator._validate_currency(None) is False  # None fails when check_required=True (default)
+        assert (
+            validator._validate_currency(None, check_required=False) is True
+        )  # None handled by check_required=False
+        assert (
+            validator._validate_currency(None) is False
+        )  # None fails when check_required=True (default)
 
     def test_percentage_validation_edge_cases(self):
         """Test percentage validation with edge cases."""

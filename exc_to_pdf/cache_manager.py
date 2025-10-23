@@ -25,6 +25,7 @@ logger = structlog.get_logger()
 @dataclass
 class CacheEntry:
     """Cache entry with metadata."""
+
     key: str
     value: Any
     size_bytes: int
@@ -47,6 +48,7 @@ class CacheEntry:
 @dataclass
 class CacheStats:
     """Cache performance statistics."""
+
     total_entries: int = 0
     total_size_bytes: int = 0
     hits: int = 0
@@ -81,7 +83,7 @@ class CacheManager:
         max_disk_mb: int = 1000,
         cache_dir: Optional[Path] = None,
         ttl_seconds: Optional[float] = None,
-        enable_disk_cache: bool = True
+        enable_disk_cache: bool = True,
     ):
         """
         Initialize cache manager.
@@ -104,7 +106,9 @@ class CacheManager:
 
         # Initialize disk cache
         if self.enable_disk_cache:
-            self.cache_dir = cache_dir or Path(tempfile.gettempdir()) / "exc-to-pdf-cache"
+            self.cache_dir = (
+                cache_dir or Path(tempfile.gettempdir()) / "exc-to-pdf-cache"
+            )
             self.cache_dir.mkdir(parents=True, exist_ok=True)
             self.db_path = self.cache_dir / "cache.db"
             self._init_disk_cache()
@@ -120,7 +124,7 @@ class CacheManager:
             max_memory_mb=max_memory_mb,
             max_disk_mb=max_disk_mb if enable_disk_cache else 0,
             cache_dir=str(self.cache_dir) if self.cache_dir else None,
-            ttl_seconds=ttl_seconds
+            ttl_seconds=ttl_seconds,
         )
 
     def _init_disk_cache(self) -> None:
@@ -130,7 +134,8 @@ class CacheManager:
 
         try:
             with sqlite3.connect(str(self.db_path)) as conn:
-                conn.execute("""
+                conn.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS cache_entries (
                         key TEXT PRIMARY KEY,
                         data BLOB,
@@ -140,11 +145,14 @@ class CacheManager:
                         access_count INTEGER,
                         expires_at REAL
                     )
-                """)
-                conn.execute("""
+                """
+                )
+                conn.execute(
+                    """
                     CREATE INDEX IF NOT EXISTS idx_last_accessed
                     ON cache_entries(last_accessed)
-                """)
+                """
+                )
                 conn.commit()
 
             logger.debug("Disk cache database initialized", db_path=str(self.db_path))
@@ -167,7 +175,7 @@ class CacheManager:
             return len(pickle.dumps(obj))
         except Exception:
             # Fallback to string representation size
-            return len(str(obj).encode('utf-8'))
+            return len(str(obj).encode("utf-8"))
 
     def _generate_key(self, key_parts: List[Any]) -> str:
         """
@@ -180,7 +188,7 @@ class CacheManager:
             Generated cache key
         """
         key_str = "|".join(str(part) for part in key_parts)
-        return hashlib.sha256(key_str.encode('utf-8')).hexdigest()
+        return hashlib.sha256(key_str.encode("utf-8")).hexdigest()
 
     def _evict_memory_entries(self, target_size: Optional[int] = None) -> int:
         """
@@ -197,8 +205,7 @@ class CacheManager:
 
         # Sort by last accessed time (LRU)
         sorted_entries = sorted(
-            self._memory_cache.items(),
-            key=lambda x: x[1].last_accessed
+            self._memory_cache.items(), key=lambda x: x[1].last_accessed
         )
 
         current_size = sum(entry.size_bytes for entry in self._memory_cache.values())
@@ -208,8 +215,9 @@ class CacheManager:
                 break
 
             # Move to disk cache if enabled and entry is not too large
-            if (self.enable_disk_cache and
-                entry.size_bytes < self.max_disk_bytes * 0.1):  # Max 10% of disk cache per entry
+            if (
+                self.enable_disk_cache and entry.size_bytes < self.max_disk_bytes * 0.1
+            ):  # Max 10% of disk cache per entry
                 try:
                     self._store_to_disk(entry)
                 except Exception as e:
@@ -253,8 +261,8 @@ class CacheManager:
                         entry.created_at,
                         entry.last_accessed,
                         entry.access_count,
-                        entry.expires_at
-                    )
+                        entry.expires_at,
+                    ),
                 )
                 conn.commit()
 
@@ -284,14 +292,21 @@ class CacheManager:
                     SELECT data, size_bytes, created_at, last_accessed, access_count, expires_at
                     FROM cache_entries WHERE key = ?
                     """,
-                    (key,)
+                    (key,),
                 )
                 row = cursor.fetchone()
 
                 if not row:
                     return None
 
-                data, size_bytes, created_at, last_accessed, access_count, expires_at = row
+                (
+                    data,
+                    size_bytes,
+                    created_at,
+                    last_accessed,
+                    access_count,
+                    expires_at,
+                ) = row
                 value = pickle.loads(data)
 
                 entry = CacheEntry(
@@ -301,7 +316,7 @@ class CacheManager:
                     created_at=created_at,
                     last_accessed=last_accessed,
                     access_count=access_count,
-                    expires_at=expires_at
+                    expires_at=expires_at,
                 )
 
                 # Check if expired
@@ -333,7 +348,7 @@ class CacheManager:
                     SET last_accessed = ?, access_count = ?
                     WHERE key = ?
                     """,
-                    (entry.last_accessed, entry.access_count, key)
+                    (entry.last_accessed, entry.access_count, key),
                 )
                 conn.commit()
         except Exception as e:
@@ -362,22 +377,26 @@ class CacheManager:
                 # Delete expired entries
                 cursor = conn.execute(
                     "DELETE FROM cache_entries WHERE expires_at IS NOT NULL AND expires_at < ?",
-                    (time.time(),)
+                    (time.time(),),
                 )
                 expired_deleted = cursor.rowcount
 
                 # Delete oldest entries if over size limit
-                cursor = conn.execute("""
+                cursor = conn.execute(
+                    """
                     SELECT SUM(size_bytes) FROM cache_entries
-                """)
+                """
+                )
                 total_size = cursor.fetchone()[0] or 0
 
                 if total_size > self.max_disk_bytes:
                     # Delete oldest entries
-                    cursor = conn.execute("""
+                    cursor = conn.execute(
+                        """
                         SELECT key FROM cache_entries
                         ORDER BY last_accessed ASC
-                    """)
+                    """
+                    )
 
                     current_size = total_size
                     target_size = int(self.max_disk_bytes * 0.8)
@@ -389,8 +408,7 @@ class CacheManager:
 
                         # Get entry size
                         size_cursor = conn.execute(
-                            "SELECT size_bytes FROM cache_entries WHERE key = ?",
-                            (key,)
+                            "SELECT size_bytes FROM cache_entries WHERE key = ?", (key,)
                         )
                         entry_size = size_cursor.fetchone()[0]
 
@@ -438,7 +456,9 @@ class CacheManager:
                 entry = self._load_from_disk(key)
                 if entry:
                     # Move to memory if space allows
-                    if entry.size_bytes <= self.max_memory_bytes * 0.1:  # Max 10% of memory cache per entry
+                    if (
+                        entry.size_bytes <= self.max_memory_bytes * 0.1
+                    ):  # Max 10% of memory cache per entry
                         self._evict_memory_entries()
                         self._memory_cache[key] = entry
                         self.stats.memory_entries += 1
@@ -450,7 +470,9 @@ class CacheManager:
             self.stats.misses += 1
             return None
 
-    def put(self, key_parts: List[Any], value: Any, ttl_seconds: Optional[float] = None) -> bool:
+    def put(
+        self, key_parts: List[Any], value: Any, ttl_seconds: Optional[float] = None
+    ) -> bool:
         """
         Store value in cache.
 
@@ -473,7 +495,9 @@ class CacheManager:
             expires_at = current_time + ttl
 
         # Check if value is too large for any cache
-        if size_bytes > self.max_memory_bytes and (not self.enable_disk_cache or size_bytes > self.max_disk_bytes):
+        if size_bytes > self.max_memory_bytes and (
+            not self.enable_disk_cache or size_bytes > self.max_disk_bytes
+        ):
             logger.warning(f"Value too large for cache: {size_bytes} bytes")
             return False
 
@@ -484,16 +508,24 @@ class CacheManager:
             created_at=current_time,
             last_accessed=current_time,
             access_count=1,
-            expires_at=expires_at
+            expires_at=expires_at,
         )
 
         with self._cache_lock:
             # Store in memory if small enough
-            if size_bytes <= self.max_memory_bytes * 0.5:  # Max 50% of memory cache per entry
+            if (
+                size_bytes <= self.max_memory_bytes * 0.5
+            ):  # Max 50% of memory cache per entry
                 # Evict entries if necessary
                 current_size = sum(e.size_bytes for e in self._memory_cache.values())
-                if current_size + size_bytes > self.max_memory_bytes:
+                if (
+                    current_size + size_bytes > self.max_memory_bytes * 0.8
+                ):  # Trigger eviction at 80%
                     self._evict_memory_entries()
+                    # Update current size after eviction
+                    current_size = sum(
+                        e.size_bytes for e in self._memory_cache.values()
+                    )
 
                 self._memory_cache[key] = entry
                 self.stats.memory_entries += 1
@@ -503,7 +535,9 @@ class CacheManager:
                 if self.enable_disk_cache:
                     self._store_to_disk(entry)
                 else:
-                    logger.warning(f"Value too large for memory cache and disk cache disabled")
+                    logger.warning(
+                        f"Value too large for memory cache and disk cache disabled"
+                    )
                     return False
 
             self.stats.total_entries += 1
@@ -577,7 +611,9 @@ class CacheManager:
         with self._cache_lock:
             # Update current counts
             self.stats.memory_entries = len(self._memory_cache)
-            self.stats.total_size_bytes = sum(entry.size_bytes for entry in self._memory_cache.values())
+            self.stats.total_size_bytes = sum(
+                entry.size_bytes for entry in self._memory_cache.values()
+            )
 
             # Get disk entry count
             if self.enable_disk_cache:
@@ -595,8 +631,7 @@ class CacheManager:
         with self._cache_lock:
             # Clean up expired memory entries
             expired_keys = [
-                key for key, entry in self._memory_cache.items()
-                if entry.is_expired
+                key for key, entry in self._memory_cache.items() if entry.is_expired
             ]
             for key in expired_keys:
                 del self._memory_cache[key]
@@ -647,16 +682,13 @@ def cache_with_ttl(ttl_seconds: float):
     Returns:
         Decorated function
     """
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             cache = get_global_cache()
 
             # Generate cache key
-            key_parts = [
-                func.__name__,
-                str(args),
-                str(sorted(kwargs.items()))
-            ]
+            key_parts = [func.__name__, str(args), str(sorted(kwargs.items()))]
 
             # Try to get from cache
             result = cache.get(key_parts)
@@ -670,4 +702,5 @@ def cache_with_ttl(ttl_seconds: float):
             return result
 
         return wrapper
+
     return decorator

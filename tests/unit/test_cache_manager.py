@@ -14,12 +14,12 @@ from unittest.mock import Mock, patch, MagicMock
 
 import pytest
 
-from src.cache_manager import (
+from exc_to_pdf.cache_manager import (
     CacheManager,
     CacheEntry,
     CacheStats,
     get_global_cache,
-    cache_with_ttl
+    cache_with_ttl,
 )
 
 
@@ -34,7 +34,7 @@ class TestCacheEntry:
             size_bytes=50,
             created_at=time.time(),
             last_accessed=time.time(),
-            access_count=1
+            access_count=1,
         )
 
         assert entry.key == "test_key"
@@ -58,7 +58,7 @@ class TestCacheEntry:
             created_at=past_time,
             last_accessed=past_time,
             access_count=1,
-            expires_at=past_time  # Expired
+            expires_at=past_time,  # Expired
         )
         assert expired_entry.is_expired is True
 
@@ -70,7 +70,7 @@ class TestCacheEntry:
             created_at=current_time,
             last_accessed=current_time,
             access_count=1,
-            expires_at=future_time  # Not expired
+            expires_at=future_time,  # Not expired
         )
         assert valid_entry.is_expired is False
 
@@ -81,7 +81,7 @@ class TestCacheEntry:
             size_bytes=50,
             created_at=current_time,
             last_accessed=current_time,
-            access_count=1
+            access_count=1,
         )
         assert no_expire_entry.is_expired is False
 
@@ -93,7 +93,7 @@ class TestCacheEntry:
             size_bytes=50,
             created_at=time.time(),
             last_accessed=time.time(),
-            access_count=1
+            access_count=1,
         )
 
         original_time = entry.last_accessed
@@ -122,17 +122,13 @@ class TestCacheManager:
             max_disk_mb=50,
             cache_dir=temp_dir,
             ttl_seconds=None,
-            enable_disk_cache=True
+            enable_disk_cache=True,
         )
 
     @pytest.fixture
     def memory_only_cache(self) -> CacheManager:
         """Create memory-only cache manager."""
-        return CacheManager(
-            max_memory_mb=10,
-            max_disk_mb=0,
-            enable_disk_cache=False
-        )
+        return CacheManager(max_memory_mb=10, max_disk_mb=0, enable_disk_cache=False)
 
     def test_cache_manager_initialization(self, temp_dir: Path) -> None:
         """Test cache manager initialization."""
@@ -141,7 +137,7 @@ class TestCacheManager:
             max_disk_mb=500,
             cache_dir=temp_dir,
             ttl_seconds=3600,
-            enable_disk_cache=True
+            enable_disk_cache=True,
         )
 
         assert manager.max_memory_bytes == 100 * 1024 * 1024
@@ -153,10 +149,7 @@ class TestCacheManager:
 
     def test_cache_manager_memory_only_initialization(self) -> None:
         """Test memory-only cache manager initialization."""
-        manager = CacheManager(
-            max_memory_mb=50,
-            enable_disk_cache=False
-        )
+        manager = CacheManager(max_memory_mb=50, enable_disk_cache=False)
 
         assert manager.max_memory_bytes == 50 * 1024 * 1024
         assert manager.enable_disk_cache is False
@@ -246,7 +239,8 @@ class TestCacheManager:
     def test_memory_eviction(self, memory_only_cache: CacheManager) -> None:
         """Test memory-based LRU eviction."""
         # Fill cache with large entries to trigger eviction
-        large_values = [f"large_value_{i}" * 1000 for i in range(20)]
+        # Each entry ~1MB to ensure eviction triggers with 10MB cache
+        large_values = [f"large_value_{i}" * 50000 for i in range(15)]
 
         for i, value in enumerate(large_values):
             memory_only_cache.put([f"key_{i}"], value)
@@ -254,15 +248,15 @@ class TestCacheManager:
         # Some entries should have been evicted
         stats = memory_only_cache.get_stats()
         assert stats.evictions > 0
-        assert stats.memory_entries < 20
+        assert stats.memory_entries < 15
 
     def test_disk_cache_storage(self, cache_manager: CacheManager) -> None:
         """Test disk cache storage."""
         key_parts = ["disk", "test"]
-        value = "this should go to disk"
 
-        # Put value that's too large for memory cache
-        large_value = value * 10000  # Make it large
+        # Create a value that's definitely larger than 50% of 10MB = 5MB
+        # Use bytes to ensure accurate size calculation
+        large_value = b"x" * 6 * 1024 * 1024  # 6MB of bytes
         result = cache_manager.put(key_parts, large_value)
         assert result is True
 
@@ -461,7 +455,7 @@ class TestCacheDecorator:
 
         # Call with different args should execute function
         result3 = expensive_function(3, 7)
-        assert result3 == 22  # 3*7 + 2
+        assert result3 == 23  # 3*7 + 2 (call_count increments to 2)
         assert call_count == 2
 
         # Wait for cache expiration
@@ -469,7 +463,7 @@ class TestCacheDecorator:
 
         # Call after expiration should execute function again
         result4 = expensive_function(5, 10)
-        assert result4 == 52  # 5*10 + 3 (new call)
+        assert result4 == 53  # 5*10 + 3 (new call)
         assert call_count == 3
 
     def test_cache_decorator_with_different_args(self) -> None:
@@ -504,38 +498,43 @@ class TestCacheDecorator:
 class TestErrorHandling:
     """Test cases for error handling in cache operations."""
 
-    def test_disk_cache_error_handling(self, temp_dir: Path) -> None:
+    def test_disk_cache_error_handling(self) -> None:
         """Test disk cache error handling."""
-        cache = CacheManager(
-            max_memory_mb=10,
-            max_disk_mb=50,
-            cache_dir=temp_dir,
-            enable_disk_cache=True
-        )
+        import tempfile
 
-        # Corrupt the database file
-        if cache.db_path and cache.db_path.exists():
-            cache.db_path.write_text("corrupted data")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cache = CacheManager(
+                max_memory_mb=10,
+                max_disk_mb=50,
+                cache_dir=Path(temp_dir),
+                enable_disk_cache=True,
+            )
 
-        # Should handle corruption gracefully
-        key_parts = ["error", "test"]
-        value = "test_value"
+            # Corrupt the database file
+            if cache.db_path and cache.db_path.exists():
+                cache.db_path.write_text("corrupted data")
 
-        # Put should still work (fall back to memory)
-        result = cache.put(key_parts, value)
-        assert result is True
+            # Should handle corruption gracefully
+            key_parts = ["error", "test"]
+            value = "test_value"
 
-        # Get should work from memory
-        retrieved = cache.get(key_parts)
-        assert retrieved == value
+            # Put should still work (fall back to memory)
+            result = cache.put(key_parts, value)
+            assert result is True
 
-    def test_pickle_error_handling(self, cache_manager: CacheManager) -> None:
+            # Get should work from memory
+            retrieved = cache.get(key_parts)
+            assert retrieved == value
+
+    def test_pickle_error_handling(self) -> None:
         """Test handling of unpickleable objects."""
         # Try to cache an unpickleable object (file handle)
         import io
 
         unpickleable = io.StringIO("test")
         key_parts = ["unpickleable", "test"]
+
+        cache_manager = CacheManager(max_memory_mb=10, enable_disk_cache=True)
 
         # Should handle pickle error gracefully
         result = cache_manager.put(key_parts, unpickleable)

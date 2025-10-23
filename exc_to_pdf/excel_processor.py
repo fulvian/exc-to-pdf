@@ -9,7 +9,10 @@ optimized for PDF generation. Includes streaming capabilities for large files.
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Dict, Any, Iterator
+from typing import List, Optional, Dict, Any, Iterator, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .streaming_excel_processor import StreamingExcelProcessor
 
 from openpyxl import load_workbook
 from openpyxl.workbook import Workbook
@@ -21,7 +24,7 @@ from .exceptions import (
     WorkbookException,
     WorksheetNotFoundException,
     DataExtractionException,
-    WorkbookInitializationException
+    WorkbookInitializationException,
 )
 from .config.excel_config import ExcelConfig, DEFAULT_CONFIG
 from .table_detector import TableDetector, TableInfo
@@ -40,6 +43,7 @@ class SheetData:
 
     Contains tables, metadata, and raw data extracted from a worksheet.
     """
+
     sheet_name: str
     tables: List[Dict[str, Any]]
     metadata: Dict[str, Any]
@@ -63,11 +67,7 @@ class ExcelReader:
         _is_read_only: Flag indicating read-only mode usage
     """
 
-    def __init__(
-        self,
-        file_path: str,
-        config: Optional[ExcelConfig] = None
-    ) -> None:
+    def __init__(self, file_path: str, config: Optional[ExcelConfig] = None) -> None:
         """
         Initialize ExcelReader with file path and optional configuration.
 
@@ -103,7 +103,7 @@ class ExcelReader:
         self.data_validator = DataValidator(self.config)
 
         # Initialize streaming processor for large files
-        self.streaming_processor: Optional[StreamingExcelProcessor] = None
+        self.streaming_processor: Optional["StreamingExcelProcessor"] = None
 
         # Initialize cache
         self.cache = get_global_cache() if self.config.enable_caching else None
@@ -120,8 +120,7 @@ class ExcelReader:
         # Check file existence
         if not self.file_path.exists():
             raise InvalidFileException(
-                f"File not found: {self.file_path}",
-                str(self.file_path)
+                f"File not found: {self.file_path}", str(self.file_path)
             )
 
         # Check file extension
@@ -129,7 +128,7 @@ class ExcelReader:
             raise InvalidFileException(
                 f"Invalid file extension: {self.file_path.suffix}. "
                 f"Allowed extensions: {self.config.allowed_extensions}",
-                str(self.file_path)
+                str(self.file_path),
             )
 
         # Check file size
@@ -139,14 +138,16 @@ class ExcelReader:
                 f"File too large: {file_size_mb:.1f}MB. "
                 f"Maximum allowed: {self.config.max_file_size_mb}MB",
                 str(self.file_path),
-                context={"file_size_mb": file_size_mb, "max_size_mb": self.config.max_file_size_mb}
+                context={
+                    "file_size_mb": file_size_mb,
+                    "max_size_mb": self.config.max_file_size_mb,
+                },
             )
 
         # Check if file is empty
         if self.file_path.stat().st_size == 0:
             raise InvalidFileException(
-                f"File is empty: {self.file_path}",
-                str(self.file_path)
+                f"File is empty: {self.file_path}", str(self.file_path)
             )
 
         logger.debug(f"File validation passed: {self.file_path}")
@@ -171,19 +172,23 @@ class ExcelReader:
             self.workbook = load_workbook(
                 filename=str(self.file_path),
                 read_only=read_only,
-                data_only=True  # Get values, not formulas
+                data_only=True,  # Get values, not formulas
             )
             self._is_read_only = read_only
 
-            logger.info(f"Workbook opened successfully with {len(self.workbook.sheetnames)} sheets")
+            logger.info(
+                f"Workbook opened successfully with {len(self.workbook.sheetnames)} sheets"
+            )
 
         except Exception as e:
             error_msg = f"Failed to initialize workbook: {e}"
-            logger.error(error_msg, extra={"file_path": str(self.file_path), "error": str(e)})
+            logger.error(
+                error_msg, extra={"file_path": str(self.file_path), "error": str(e)}
+            )
             raise WorkbookInitializationException(
                 error_msg,
                 str(self.file_path),
-                context={"read_only": read_only, "original_error": str(e)}
+                context={"read_only": read_only, "original_error": str(e)},
             ) from e
 
     def close(self) -> None:
@@ -212,7 +217,12 @@ class ExcelReader:
         self._initialize_workbook(self.config.read_only_mode)
         return self
 
-    def __exit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[object]) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[type],
+        exc_val: Optional[Exception],
+        exc_tb: Optional[object],
+    ) -> None:
         """Context manager exit."""
         self.close()
 
@@ -244,11 +254,11 @@ class ExcelReader:
 
         except Exception as e:
             error_msg = f"Failed to discover sheets: {e}"
-            logger.error(error_msg, extra={"file_path": str(self.file_path), "error": str(e)})
+            logger.error(
+                error_msg, extra={"file_path": str(self.file_path), "error": str(e)}
+            )
             raise WorkbookException(
-                error_msg,
-                str(self.file_path),
-                context={"original_error": str(e)}
+                error_msg, str(self.file_path), context={"original_error": str(e)}
             ) from e
 
     def extract_sheet_data(self, sheet_name: str) -> SheetData:
@@ -282,7 +292,7 @@ class ExcelReader:
                 raise WorksheetNotFoundException(
                     f"Worksheet '{sheet_name}' not found",
                     str(self.file_path),
-                    context={"available_sheets": self.workbook.sheetnames}
+                    context={"available_sheets": self.workbook.sheetnames},
                 )
 
             # Get worksheet
@@ -293,11 +303,19 @@ class ExcelReader:
                 "title": worksheet.title,
                 "max_row": worksheet.max_row,
                 "max_column": worksheet.max_column,
-                "sheet_state": getattr(worksheet, 'sheet_state', 'visible'),
+                "sheet_state": getattr(worksheet, "sheet_state", "visible"),
                 "page_setup": {
-                    "orientation": getattr(worksheet.page_setup, 'orientation', None) if hasattr(worksheet, 'page_setup') and worksheet.page_setup else None,
-                    "paper_size": getattr(worksheet.page_setup, 'paperSize', None) if hasattr(worksheet, 'page_setup') and worksheet.page_setup else None
-                }
+                    "orientation": (
+                        getattr(worksheet.page_setup, "orientation", None)
+                        if hasattr(worksheet, "page_setup") and worksheet.page_setup
+                        else None
+                    ),
+                    "paper_size": (
+                        getattr(worksheet.page_setup, "paperSize", None)
+                        if hasattr(worksheet, "page_setup") and worksheet.page_setup
+                        else None
+                    ),
+                },
             }
 
             # Extract raw data (limited for memory efficiency)
@@ -308,7 +326,9 @@ class ExcelReader:
 
             for row_idx, row in enumerate(worksheet.iter_rows(values_only=True), 1):
                 if row_idx > self.config.max_row_count:
-                    logger.warning(f"Reached maximum row limit ({self.config.max_row_count})")
+                    logger.warning(
+                        f"Reached maximum row limit ({self.config.max_row_count})"
+                    )
                     break
 
                 # Convert row to list and filter None values at the end
@@ -324,15 +344,17 @@ class ExcelReader:
 
             # Extract formal tables (if any)
             tables = []
-            if hasattr(worksheet, 'tables') and worksheet.tables:
+            if hasattr(worksheet, "tables") and worksheet.tables:
                 for table in worksheet.tables.values():
-                    tables.append({
-                        "name": table.name,
-                        "ref": table.ref,
-                        "headerRowCount": table.headerRowCount,
-                        "insertRow": table.insertRow,
-                        "totalsRowCount": table.totalsRowCount
-                    })
+                    tables.append(
+                        {
+                            "name": table.name,
+                            "ref": table.ref,
+                            "headerRowCount": table.headerRowCount,
+                            "insertRow": table.insertRow,
+                            "totalsRowCount": table.totalsRowCount,
+                        }
+                    )
 
             sheet_data = SheetData(
                 sheet_name=sheet_name,
@@ -341,11 +363,13 @@ class ExcelReader:
                 raw_data=raw_data,
                 row_count=row_count,
                 col_count=col_count,
-                has_data=has_data
+                has_data=has_data,
             )
 
-            logger.info(f"Extracted data from sheet '{sheet_name}': "
-                       f"{row_count} rows, {col_count} cols, {len(tables)} tables")
+            logger.info(
+                f"Extracted data from sheet '{sheet_name}': "
+                f"{row_count} rows, {col_count} cols, {len(tables)} tables"
+            )
 
             return sheet_data
 
@@ -353,11 +377,18 @@ class ExcelReader:
             raise  # Re-raise as-is
         except Exception as e:
             error_msg = f"Failed to extract data from sheet '{sheet_name}': {e}"
-            logger.error(error_msg, extra={"file_path": str(self.file_path), "sheet_name": sheet_name, "error": str(e)})
+            logger.error(
+                error_msg,
+                extra={
+                    "file_path": str(self.file_path),
+                    "sheet_name": sheet_name,
+                    "error": str(e),
+                },
+            )
             raise DataExtractionException(
                 error_msg,
                 str(self.file_path),
-                context={"sheet_name": sheet_name, "original_error": str(e)}
+                context={"sheet_name": sheet_name, "original_error": str(e)},
             ) from e
 
     def detect_tables(self, sheet_name: str) -> List[TableInfo]:
@@ -392,7 +423,7 @@ class ExcelReader:
                 raise WorksheetNotFoundException(
                     f"Worksheet '{sheet_name}' not found",
                     str(self.file_path),
-                    context={"available_sheets": self.workbook.sheetnames}
+                    context={"available_sheets": self.workbook.sheetnames},
                 )
 
             # Get worksheet
@@ -408,14 +439,23 @@ class ExcelReader:
             raise  # Re-raise as-is
         except Exception as e:
             error_msg = f"Failed to detect tables in sheet '{sheet_name}': {e}"
-            logger.error(error_msg, extra={"file_path": str(self.file_path), "sheet_name": sheet_name, "error": str(e)})
+            logger.error(
+                error_msg,
+                extra={
+                    "file_path": str(self.file_path),
+                    "sheet_name": sheet_name,
+                    "error": str(e),
+                },
+            )
             raise DataExtractionException(
                 error_msg,
                 str(self.file_path),
-                context={"sheet_name": sheet_name, "original_error": str(e)}
+                context={"sheet_name": sheet_name, "original_error": str(e)},
             ) from e
 
-    def validate_sheet_data(self, sheet_name: str, validation_rules: Optional[List[ValidationRule]] = None) -> ValidationResult:
+    def validate_sheet_data(
+        self, sheet_name: str, validation_rules: Optional[List[ValidationRule]] = None
+    ) -> ValidationResult:
         """
         Validate data in a specific worksheet using validation rules.
 
@@ -442,7 +482,7 @@ class ExcelReader:
         return self.data_validator.validate_table_data(
             data=sheet_data.raw_data,
             headers=sheet_data.raw_data[0] if sheet_data.raw_data else [],
-            rules=validation_rules
+            rules=validation_rules,
         )
 
     def _should_use_streaming(self) -> bool:
@@ -454,8 +494,9 @@ class ExcelReader:
         """
         # Use streaming if explicitly enabled or file is large
         file_size_mb = self.file_path.stat().st_size / (1024 * 1024)
-        return (self.config.streaming_enabled or
-                file_size_mb > 50)  # Use streaming for files > 50MB
+        return (
+            self.config.streaming_enabled or file_size_mb > 50
+        )  # Use streaming for files > 50MB
 
     def _get_streaming_processor(self) -> "StreamingExcelProcessor":
         """
@@ -467,13 +508,14 @@ class ExcelReader:
         if self.streaming_processor is None:
             # Import here to avoid circular import
             from .streaming_excel_processor import StreamingExcelProcessor
-            self.streaming_processor = StreamingExcelProcessor(str(self.file_path), self.config)
+
+            self.streaming_processor = StreamingExcelProcessor(
+                str(self.file_path), self.config
+            )
         return self.streaming_processor
 
     def extract_sheet_data_optimized(
-        self,
-        sheet_name: str,
-        progress_tracker: Optional[ProgressTracker] = None
+        self, sheet_name: str, progress_tracker: Optional[ProgressTracker] = None
     ) -> SheetData:
         """
         Extract sheet data using optimal method (streaming or traditional).
@@ -491,7 +533,12 @@ class ExcelReader:
         """
         # Check cache first
         if self.cache:
-            cache_key = ["sheet_data", str(self.file_path), sheet_name, str(self.config)]
+            cache_key = [
+                "sheet_data",
+                str(self.file_path),
+                sheet_name,
+                str(self.config),
+            ]
             cached_result = self.cache.get(cache_key)
             if cached_result:
                 logger.info(f"Using cached data for sheet '{sheet_name}'")
@@ -501,21 +548,27 @@ class ExcelReader:
         if self._should_use_streaming():
             logger.info(f"Using streaming extraction for sheet '{sheet_name}'")
             processor = self._get_streaming_processor()
-            result = processor.extract_sheet_data_streaming(sheet_name, progress_tracker)
+            result = processor.extract_sheet_data_streaming(
+                sheet_name, progress_tracker
+            )
         else:
             logger.info(f"Using traditional extraction for sheet '{sheet_name}'")
             result = self.extract_sheet_data(sheet_name)
 
         # Cache result
         if self.cache and result:
-            cache_key = ["sheet_data", str(self.file_path), sheet_name, str(self.config)]
+            cache_key = [
+                "sheet_data",
+                str(self.file_path),
+                sheet_name,
+                str(self.config),
+            ]
             self.cache.put(cache_key, result)
 
         return result
 
     def process_all_sheets_optimized(
-        self,
-        progress_tracker: Optional[ProgressTracker] = None
+        self, progress_tracker: Optional[ProgressTracker] = None
     ) -> List[SheetData]:
         """
         Process all sheets using optimal method.
@@ -560,9 +613,7 @@ class ExcelReader:
         return result
 
     def detect_tables_optimized(
-        self,
-        sheet_name: str,
-        progress_tracker: Optional[ProgressTracker] = None
+        self, sheet_name: str, progress_tracker: Optional[ProgressTracker] = None
     ) -> List[TableInfo]:
         """
         Detect tables using optimal method.
@@ -622,7 +673,7 @@ class ExcelReader:
             "parallel_processing": self.config.parallel_processing,
             "chunk_size": self.config.chunk_size,
             "memory_limit_mb": self.config.memory_limit_mb,
-            "cache_enabled": self.config.enable_caching
+            "cache_enabled": self.config.enable_caching,
         }
 
         # Add processing statistics if available
@@ -634,7 +685,7 @@ class ExcelReader:
                 "processing_time_seconds": processing_stats.processing_time_seconds,
                 "peak_memory_mb": processing_stats.peak_memory_mb,
                 "sheets_processed": processing_stats.sheets_processed,
-                "errors_encountered": processing_stats.errors_encountered
+                "errors_encountered": processing_stats.errors_encountered,
             }
 
         return info
@@ -646,7 +697,7 @@ class ExcelReader:
             cache_keys = [
                 ["sheet_data", str(self.file_path)],
                 ["all_sheets", str(self.file_path)],
-                ["tables", str(self.file_path)]
+                ["tables", str(self.file_path)],
             ]
 
             for base_key in cache_keys:

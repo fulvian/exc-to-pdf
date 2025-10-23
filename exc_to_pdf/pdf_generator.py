@@ -51,13 +51,16 @@ class PDFGenerator:
             extra={
                 "optimize_for_notebooklm": self.config.optimize_for_notebooklm,
                 "include_bookmarks": self.config.include_bookmarks,
-                "include_metadata": self.config.include_metadata
-            }
+                "include_metadata": self.config.include_metadata,
+            },
         )
 
-    def create_pdf(self, sheet_data_list: List[Any],
-                   output_path: str,
-                   source_file: Optional[str] = None) -> None:
+    def create_pdf(
+        self,
+        sheet_data_list: List[Any],
+        output_path: str,
+        source_file: Optional[str] = None,
+    ) -> None:
         """Generate PDF from Excel sheet data.
 
         Args:
@@ -77,8 +80,8 @@ class PDFGenerator:
                 extra={
                     "output_path": output_path,
                     "sheet_count": len(sheet_data_list),
-                    "source_file": source_file
-                }
+                    "source_file": source_file,
+                },
             )
 
             # Process sheets and organize tables
@@ -100,10 +103,7 @@ class PDFGenerator:
             doc_config = self._build_document(tables_by_sheet, bookmarks, metadata)
 
             # Create and build PDF document
-            doc = SimpleDocTemplate(
-                output_path,
-                **doc_config
-            )
+            doc = SimpleDocTemplate(output_path, **doc_config)
 
             # Create story with metadata if needed
             story = self._create_story(tables_by_sheet)
@@ -116,12 +116,18 @@ class PDFGenerator:
                 def build_with_metadata(story_elements: List[Any]) -> None:
                     def on_first_page(canvas: Any, doc_obj: Any) -> None:
                         # Add custom metadata to PDF
-                        canvas.setCreator(doc_config.get('creator', 'exc-to-pdf v2.2.0'))
-                        canvas.setProducer(doc_config.get('producer', 'ReportLab PDF Library'))
+                        canvas.setCreator(
+                            doc_config.get("creator", "exc-to-pdf v2.2.0")
+                        )
+                        canvas.setProducer(
+                            doc_config.get("producer", "ReportLab PDF Library")
+                        )
 
                         # Add AI optimization metadata
-                        if doc_config.get('ai_optimized'):
-                            canvas.setSubject(f"{doc_config.get('subject', '')} (AI Optimized for NotebookLM)")
+                        if doc_config.get("ai_optimized"):
+                            canvas.setSubject(
+                                f"{doc_config.get('subject', '')} (AI Optimized for NotebookLM)"
+                            )
 
                     doc.onFirstPage = on_first_page  # type: ignore[attr-defined]
                     return original_build(story_elements)
@@ -137,8 +143,10 @@ class PDFGenerator:
                     "output_path": output_path,
                     "total_pages": self.current_page - 1,
                     "total_sheets": len(sheet_data_list),
-                    "total_tables": sum(len(tables) for tables in tables_by_sheet.values())
-                }
+                    "total_tables": sum(
+                        len(tables) for tables in tables_by_sheet.values()
+                    ),
+                },
             )
 
         except Exception as e:
@@ -147,12 +155,14 @@ class PDFGenerator:
                 extra={
                     "output_path": output_path,
                     "sheet_count": len(sheet_data_list) if sheet_data_list else 0,
-                    "error": str(e)
-                }
+                    "error": str(e),
+                },
             )
             raise PDFGenerationException(f"Failed to generate PDF: {e}") from e
 
-    def convert_excel_to_pdf(self, excel_file: str, pdf_file: str, worksheet_name: Optional[str] = None) -> None:
+    def convert_excel_to_pdf(
+        self, excel_file: str, pdf_file: str, worksheet_name: Optional[str] = None
+    ) -> None:
         """Convert Excel file directly to PDF format.
 
         This is a convenience method that combines Excel reading and PDF generation
@@ -175,8 +185,8 @@ class PDFGenerator:
                 extra={
                     "excel_file": excel_file,
                     "pdf_file": pdf_file,
-                    "worksheet_name": worksheet_name
-                }
+                    "worksheet_name": worksheet_name,
+                },
             )
 
             # Read Excel file
@@ -191,7 +201,7 @@ class PDFGenerator:
                     else:
                         logger.warning(
                             "Worksheet has no data",
-                            extra={"worksheet_name": worksheet_name}
+                            extra={"worksheet_name": worksheet_name},
                         )
                 else:
                     # Process all worksheets with data
@@ -204,10 +214,7 @@ class PDFGenerator:
                         except Exception as e:
                             logger.warning(
                                 "Failed to process worksheet",
-                                extra={
-                                    "worksheet_name": sheet_name,
-                                    "error": str(e)
-                                }
+                                extra={"worksheet_name": sheet_name, "error": str(e)},
                             )
                             continue
 
@@ -222,15 +229,17 @@ class PDFGenerator:
                 extra={
                     "excel_file": excel_file,
                     "pdf_file": pdf_file,
-                    "sheets_processed": len(sheet_data_list)
-                }
+                    "sheets_processed": len(sheet_data_list),
+                },
             )
 
         except Exception as e:
             if isinstance(e, PDFGenerationException):
                 raise
             else:
-                raise PDFGenerationException(f"Excel to PDF conversion failed: {e}") from e
+                raise PDFGenerationException(
+                    f"Excel to PDF conversion failed: {e}"
+                ) from e
 
     def _process_sheet(self, sheet_data: Any) -> List[Any]:
         """Process a single sheet into PDF tables.
@@ -248,12 +257,14 @@ class PDFGenerator:
             tables = []
 
             # Check if sheet has tables detected
-            if hasattr(sheet_data, 'tables') and sheet_data.tables:
+            if hasattr(sheet_data, "tables") and sheet_data.tables:
                 for table_info in sheet_data.tables:
                     # Extract table data
-                    if hasattr(table_info, 'data') and table_info.data:
+                    if hasattr(table_info, "data") and table_info.data:
                         table_data = table_info.data
-                        headers = table_info.headers if hasattr(table_info, 'headers') else []
+                        headers = (
+                            table_info.headers if hasattr(table_info, "headers") else []
+                        )
 
                         # Create formatted table
                         table = self.table_renderer.render_table(
@@ -263,20 +274,36 @@ class PDFGenerator:
                     else:
                         logger.warning(
                             "Table info missing data, skipping",
-                            extra={"table_name": getattr(table_info, 'name', 'unknown')}
+                            extra={
+                                "table_name": getattr(table_info, "name", "unknown")
+                            },
                         )
 
             # Fallback to raw data if no tables detected
-            elif hasattr(sheet_data, 'raw_data') and sheet_data.raw_data:
+            elif hasattr(sheet_data, "raw_data") and sheet_data.raw_data:
                 if sheet_data.raw_data:
                     # Use first row as headers if available
                     try:
-                        headers = sheet_data.raw_data[0] if len(sheet_data.raw_data[0]) > 0 else []
-                        data = sheet_data.raw_data[1:] if len(sheet_data.raw_data) > 1 else []
+                        headers = (
+                            sheet_data.raw_data[0]
+                            if len(sheet_data.raw_data[0]) > 0
+                            else []
+                        )
+                        data = (
+                            sheet_data.raw_data[1:]
+                            if len(sheet_data.raw_data) > 1
+                            else []
+                        )
                     except (TypeError, AttributeError):
                         # Handle cases where raw_data[0] doesn't support len()
-                        headers = sheet_data.raw_data[0] if sheet_data.raw_data[0] else []
-                        data = sheet_data.raw_data[1:] if len(sheet_data.raw_data) > 1 else []
+                        headers = (
+                            sheet_data.raw_data[0] if sheet_data.raw_data[0] else []
+                        )
+                        data = (
+                            sheet_data.raw_data[1:]
+                            if len(sheet_data.raw_data) > 1
+                            else []
+                        )
 
                     if data:
                         table = self.table_renderer.render_table(
@@ -287,7 +314,7 @@ class PDFGenerator:
             if not tables:
                 logger.warning(
                     "No tables created for sheet",
-                    extra={"sheet_name": getattr(sheet_data, 'sheet_name', 'unknown')}
+                    extra={"sheet_name": getattr(sheet_data, "sheet_name", "unknown")},
                 )
 
             return tables
@@ -296,9 +323,9 @@ class PDFGenerator:
             logger.error(
                 "Failed to process sheet",
                 extra={
-                    "sheet_name": getattr(sheet_data, 'sheet_name', 'unknown'),
-                    "error": str(e)
-                }
+                    "sheet_name": getattr(sheet_data, "sheet_name", "unknown"),
+                    "error": str(e),
+                },
             )
             raise PDFGenerationException(f"Failed to process sheet: {e}") from e
 
@@ -318,11 +345,16 @@ class PDFGenerator:
 
         try:
             for sheet_data in sheet_data_list:
-                sheet_name = getattr(sheet_data, 'sheet_name', f'Sheet_{len(tables_by_sheet) + 1}')
+                sheet_name = getattr(
+                    sheet_data, "sheet_name", f"Sheet_{len(tables_by_sheet) + 1}"
+                )
 
                 logger.debug(
                     "Processing sheet",
-                    extra={"sheet_name": sheet_name, "has_data": getattr(sheet_data, 'has_data', False)}
+                    extra={
+                        "sheet_name": sheet_name,
+                        "has_data": getattr(sheet_data, "has_data", False),
+                    },
                 )
 
                 # Process sheet into tables
@@ -338,14 +370,13 @@ class PDFGenerator:
         except Exception as e:
             logger.error(
                 "Failed to process sheets",
-                extra={
-                    "sheet_count": len(sheet_data_list),
-                    "error": str(e)
-                }
+                extra={"sheet_count": len(sheet_data_list), "error": str(e)},
             )
             raise PDFGenerationException(f"Failed to process sheets: {e}") from e
 
-    def _generate_bookmarks(self, sheet_data_list: List[Any], tables_by_sheet: Dict[str, List[Any]]) -> List[BookmarkInfo]:
+    def _generate_bookmarks(
+        self, sheet_data_list: List[Any], tables_by_sheet: Dict[str, List[Any]]
+    ) -> List[BookmarkInfo]:
         """Generate bookmarks for all sheets and tables.
 
         Args:
@@ -363,10 +394,12 @@ class PDFGenerator:
             current_page = 1
 
             for sheet_data in sheet_data_list:
-                if not getattr(sheet_data, 'has_data', False):
+                if not getattr(sheet_data, "has_data", False):
                     continue
 
-                sheet_name = getattr(sheet_data, 'sheet_name', f'Sheet_{len(bookmarks) + 1}')
+                sheet_name = getattr(
+                    sheet_data, "sheet_name", f"Sheet_{len(bookmarks) + 1}"
+                )
 
                 # Add sheet bookmark
                 sheet_bookmark = self.bookmark_manager.add_sheet_bookmark(
@@ -379,10 +412,12 @@ class PDFGenerator:
                 pages_for_sheet = self._estimate_pages_for_tables(sheet_tables)
 
                 # Add table bookmarks if tables exist
-                if hasattr(sheet_data, 'tables') and sheet_data.tables:
+                if hasattr(sheet_data, "tables") and sheet_data.tables:
                     table_page = current_page + 1  # Tables start on next page
                     for table_info in sheet_data.tables:
-                        table_name = getattr(table_info, 'name', f'Table_{len(bookmarks)}')
+                        table_name = getattr(
+                            table_info, "name", f"Table_{len(bookmarks)}"
+                        )
                         table_bookmark = self.bookmark_manager.add_table_bookmark(
                             table_name, table_page, sheet_name, 1
                         )
@@ -396,16 +431,16 @@ class PDFGenerator:
         except Exception as e:
             logger.error(
                 "Failed to generate bookmarks",
-                extra={
-                    "sheet_count": len(sheet_data_list),
-                    "error": str(e)
-                }
+                extra={"sheet_count": len(sheet_data_list), "error": str(e)},
             )
             raise PDFGenerationException(f"Failed to generate bookmarks: {e}") from e
 
-    def _build_document(self, tables_by_sheet: Dict[str, List[Any]],
-                       bookmarks: List[BookmarkInfo],
-                       metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_document(
+        self,
+        tables_by_sheet: Dict[str, List[Any]],
+        bookmarks: List[BookmarkInfo],
+        metadata: Dict[str, Any],
+    ) -> Dict[str, Any]:
         """Build complete PDF document configuration.
 
         Args:
@@ -422,31 +457,37 @@ class PDFGenerator:
         try:
             # Create document configuration
             doc_config = {
-                'pagesize': A4 if self.config.page_size == "A4" else self.config.page_size,
-                'leftMargin': self.config.margin_left,
-                'rightMargin': self.config.margin_right,
-                'topMargin': self.config.margin_top,
-                'bottomMargin': self.config.margin_bottom
+                "pagesize": (
+                    A4 if self.config.page_size == "A4" else self.config.page_size
+                ),
+                "leftMargin": self.config.margin_left,
+                "rightMargin": self.config.margin_right,
+                "topMargin": self.config.margin_top,
+                "bottomMargin": self.config.margin_bottom,
             }
 
             # Add metadata to configuration
             if metadata is not None:
-                doc_config.update({
-                    'title': metadata.get('title', 'Excel Data Analysis'),
-                    'author': metadata.get('author', 'exc-to-pdf converter'),
-                    'subject': metadata.get('subject', 'Structured data for AI analysis'),
-                    'creator': metadata.get('creator', 'exc-to-pdf v2.2.0'),
-                    'producer': metadata.get('producer', 'ReportLab PDF Library'),
-                    'ai_optimized': metadata.get('ai_optimized', False)
-                })
+                doc_config.update(
+                    {
+                        "title": metadata.get("title", "Excel Data Analysis"),
+                        "author": metadata.get("author", "exc-to-pdf converter"),
+                        "subject": metadata.get(
+                            "subject", "Structured data for AI analysis"
+                        ),
+                        "creator": metadata.get("creator", "exc-to-pdf v2.2.0"),
+                        "producer": metadata.get("producer", "ReportLab PDF Library"),
+                        "ai_optimized": metadata.get("ai_optimized", False),
+                    }
+                )
 
             logger.debug(
                 "PDF document configuration built",
                 extra={
                     "sheet_count": len(tables_by_sheet),
                     "bookmark_count": len(bookmarks),
-                    "has_metadata": bool(metadata)
-                }
+                    "has_metadata": bool(metadata),
+                },
             )
 
             return doc_config
@@ -458,8 +499,8 @@ class PDFGenerator:
                     "tables_count": len(tables_by_sheet) if tables_by_sheet else 0,
                     "bookmarks_count": len(bookmarks) if bookmarks else 0,
                     "metadata_fields": len(metadata) if metadata else 0,
-                    "error": str(e)
-                }
+                    "error": str(e),
+                },
             )
             raise PDFGenerationException(f"Failed to build document: {e}") from e
 
@@ -507,8 +548,8 @@ class PDFGenerator:
                 "Failed to create story",
                 extra={
                     "sheet_count": len(tables_by_sheet) if tables_by_sheet else 0,
-                    "error": str(e)
-                }
+                    "error": str(e),
+                },
             )
             raise PDFGenerationException(f"Failed to create story: {e}") from e
 
@@ -544,7 +585,9 @@ class PDFGenerator:
         Returns:
             Estimated number of pages
         """
-        if hasattr(table_info, 'row_count') and isinstance(table_info.row_count, (int, float)):
+        if hasattr(table_info, "row_count") and isinstance(
+            table_info.row_count, (int, float)
+        ):
             max_rows = self.config.max_table_rows_per_page
             row_count = int(table_info.row_count)
             return max(1, (row_count + max_rows - 1) // max_rows)
@@ -562,7 +605,7 @@ class PDFGenerator:
         # This is a rough estimation - in a real implementation,
         # you might want to access the actual data
         try:
-            if hasattr(table, '_arg') and table._arg:
+            if hasattr(table, "_arg") and table._arg:
                 result = len(table._arg)
                 return int(result) if isinstance(result, (int, float)) else 50
             return 50  # Default estimate
@@ -582,14 +625,14 @@ class PDFGenerator:
                 "optimize_for_notebooklm": self.config.optimize_for_notebooklm,
                 "include_bookmarks": self.config.include_bookmarks,
                 "include_metadata": self.config.include_metadata,
-                "max_table_rows_per_page": self.config.max_table_rows_per_page
+                "max_table_rows_per_page": self.config.max_table_rows_per_page,
             },
             "components": {
                 "table_renderer": self.table_renderer is not None,
                 "bookmark_manager": self.bookmark_manager is not None,
-                "metadata_manager": self.metadata_manager is not None
+                "metadata_manager": self.metadata_manager is not None,
             },
-            "current_page": self.current_page
+            "current_page": self.current_page,
         }
 
     def validate_generation_requirements(self, sheet_data_list: List[Any]) -> List[str]:
@@ -610,28 +653,29 @@ class PDFGenerator:
         # Check for sheets with no data
         sheets_with_data = 0
         for sheet_data in sheet_data_list:
-            if getattr(sheet_data, 'has_data', False):
+            if getattr(sheet_data, "has_data", False):
                 sheets_with_data += 1
 
         if sheets_with_data == 0:
             warnings.append("No sheets contain data")
         elif sheets_with_data < len(sheet_data_list):
-            warnings.append(f"Only {sheets_with_data} of {len(sheet_data_list)} sheets contain data")
+            warnings.append(
+                f"Only {sheets_with_data} of {len(sheet_data_list)} sheets contain data"
+            )
 
         # Check configuration consistency
         if self.config.include_bookmarks and not self.config.optimize_for_notebooklm:
             warnings.append("Bookmarks enabled but NotebookLM optimization disabled")
 
         if not self.config.include_metadata and self.config.optimize_for_notebooklm:
-            warnings.append("NotebookLM optimization enabled but metadata inclusion disabled")
+            warnings.append(
+                "NotebookLM optimization enabled but metadata inclusion disabled"
+            )
 
         if warnings:
             logger.warning(
                 "PDF generation validation warnings",
-                extra={
-                    "warning_count": len(warnings),
-                    "warnings": warnings
-                }
+                extra={"warning_count": len(warnings), "warnings": warnings},
             )
 
         return warnings

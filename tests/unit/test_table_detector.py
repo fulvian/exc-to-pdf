@@ -10,9 +10,9 @@ from unittest.mock import Mock, patch, MagicMock
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.worksheet.table import Table
 
-from src.table_detector import TableDetector, TableInfo
-from src.config.excel_config import ExcelConfig
-from src.exceptions import DataExtractionException
+from exc_to_pdf.table_detector import TableDetector, TableInfo
+from exc_to_pdf.config.excel_config import ExcelConfig
+from exc_to_pdf.exceptions import DataExtractionException
 
 
 class TestTableDetectorInit:
@@ -132,7 +132,7 @@ class TestDetectFormalTables:
 class TestDetectPandasTables:
     """Test pandas-based table detection."""
 
-    @patch('src.table_detector.pd.DataFrame')
+    @patch("src.table_detector.pd.DataFrame")
     def test_detect_pandas_tables_no_existing_tables(self, mock_dataframe):
         """Test pandas detection with no existing tables."""
         # Mock worksheet with data
@@ -144,7 +144,7 @@ class TestDetectPandasTables:
             (1, 2, 3),
             (4, 5, 6),
             (7, 8, 9),
-            (10, 11, 12)
+            (10, 11, 12),
         ]
 
         # Mock DataFrame behavior
@@ -178,19 +178,23 @@ class TestDetectPandasTables:
 
         assert tables == []
 
-    @patch('src.table_detector.pd.DataFrame')
+    @patch("src.table_detector.pd.DataFrame")
     def test_detect_pandas_tables_with_existing_tables(self, mock_dataframe):
         """Test pandas detection avoids overlapping with existing tables."""
         # Create existing table
         existing_table = TableInfo(
             name="ExistingTable",
             range_ref="A1:C5",
-            start_row=1, start_col=1, end_row=5, end_col=3,
+            start_row=1,
+            start_col=1,
+            end_row=5,
+            end_col=3,
             headers=["A", "B", "C"],
             detection_method="formal",
-            row_count=5, col_count=3,
+            row_count=5,
+            col_count=3,
             confidence=1.0,
-            metadata={}
+            metadata={},
         )
 
         mock_worksheet = Mock(spec=Worksheet)
@@ -201,7 +205,7 @@ class TestDetectPandasTables:
             (1, 2, 3),
             (4, 5, 6),
             (7, 8, 9),
-            (10, 11, 12)
+            (10, 11, 12),
         ]
 
         mock_df = Mock()
@@ -256,12 +260,16 @@ class TestDetectGridTables:
         existing_table = TableInfo(
             name="ExistingTable",
             range_ref="A1:C3",
-            start_row=1, start_col=1, end_row=3, end_col=3,
+            start_row=1,
+            start_col=1,
+            end_row=3,
+            end_col=3,
             headers=["A", "B", "C"],
             detection_method="formal",
-            row_count=3, col_count=3,
+            row_count=3,
+            col_count=3,
             confidence=1.0,
-            metadata={}
+            metadata={},
         )
 
         mock_worksheet = Mock(spec=Worksheet)
@@ -280,12 +288,12 @@ class TestDetectGridTables:
         for table in tables:
             assert not detector._overlaps_with_existing_tables(
                 {
-                    'start_row': table.start_row,
-                    'end_row': table.end_row,
-                    'start_col': table.start_col,
-                    'end_col': table.end_col
+                    "start_row": table.start_row,
+                    "end_row": table.end_row,
+                    "start_col": table.start_col,
+                    "end_col": table.end_col,
                 },
-                [existing_table]
+                [existing_table],
             )
 
     def test_detect_grid_tables_insufficient_size(self):
@@ -305,45 +313,57 @@ class TestDetectGridTables:
 class TestDetectTablesIntegration:
     """Test the complete table detection pipeline."""
 
-    @patch('src.table_detector.TableDetector._detect_grid_tables')
-    @patch('src.table_detector.TableDetector._detect_pandas_tables')
-    @patch('src.table_detector.TableDetector._detect_formal_tables')
+    @patch("src.table_detector.TableDetector._detect_grid_tables")
+    @patch("src.table_detector.TableDetector._detect_pandas_tables")
+    @patch("src.table_detector.TableDetector._detect_formal_tables")
     def test_detect_tables_all_methods(self, mock_formal, mock_pandas, mock_grid):
         """Test complete detection using all methods."""
         # Mock return values
         formal_table = TableInfo(
             name="FormalTable",
             range_ref="A1:C3",
-            start_row=1, start_col=1, end_row=3, end_col=3,
+            start_row=1,
+            start_col=1,
+            end_row=3,
+            end_col=3,
             headers=["A", "B", "C"],
             detection_method="formal",
-            row_count=3, col_count=3,
+            row_count=3,
+            col_count=3,
             confidence=1.0,
-            metadata={}
+            metadata={},
         )
         mock_formal.return_value = [formal_table]
 
         pandas_table = TableInfo(
             name="PandasTable_1",
             range_ref="E1:G4",
-            start_row=1, start_col=5, end_row=4, end_col=7,
+            start_row=1,
+            start_col=5,
+            end_row=4,
+            end_col=7,
             headers=["E", "F", "G"],
             detection_method="pandas",
-            row_count=4, col_count=3,
+            row_count=4,
+            col_count=3,
             confidence=0.8,
-            metadata={}
+            metadata={},
         )
         mock_pandas.return_value = [pandas_table]
 
         grid_table = TableInfo(
             name="GridTable_1",
             range_ref="A5:B7",
-            start_row=5, start_col=1, end_row=7, end_col=2,
+            start_row=5,
+            start_col=1,
+            end_row=7,
+            end_col=2,
             headers=["A", "B"],
             detection_method="grid",
-            row_count=3, col_count=2,
+            row_count=3,
+            col_count=2,
             confidence=0.6,
-            metadata={}
+            metadata={},
         )
         mock_grid.return_value = [grid_table]
 
@@ -372,7 +392,9 @@ class TestDetectTablesIntegration:
         detector = TableDetector()
 
         # Mock _detect_formal_tables to raise an exception
-        with patch.object(detector, '_detect_formal_tables', side_effect=Exception("Critical error")):
+        with patch.object(
+            detector, "_detect_formal_tables", side_effect=Exception("Critical error")
+        ):
             with pytest.raises(DataExtractionException, match="Table detection failed"):
                 detector.detect_tables(mock_worksheet)
 
@@ -380,26 +402,20 @@ class TestDetectTablesIntegration:
 class TestUtilityMethods:
     """Test utility methods of TableDetector."""
 
-    @pytest.mark.parametrize("col_letter,expected", [
-        ("A", 1),
-        ("B", 2),
-        ("Z", 26),
-        ("AA", 27),
-        ("AB", 28),
-        ("AZ", 52),
-        ("BA", 53)
-    ])
+    @pytest.mark.parametrize(
+        "col_letter,expected",
+        [("A", 1), ("B", 2), ("Z", 26), ("AA", 27), ("AB", 28), ("AZ", 52), ("BA", 53)],
+    )
     def test_parse_column_letter(self, col_letter, expected):
         """Test column letter parsing."""
         detector = TableDetector()
         result = detector._parse_column_letter(col_letter)
         assert result == expected
 
-    @pytest.mark.parametrize("start_row,start_col,end_row,end_col,expected", [
-        (1, 1, 3, 3, "A1:C3"),
-        (5, 2, 10, 4, "B5:D10"),
-        (1, 26, 2, 27, "Z1:AA2")
-    ])
+    @pytest.mark.parametrize(
+        "start_row,start_col,end_row,end_col,expected",
+        [(1, 1, 3, 3, "A1:C3"), (5, 2, 10, 4, "B5:D10"), (1, 26, 2, 27, "Z1:AA2")],
+    )
     def test_create_range_ref(self, start_row, start_col, end_row, end_col, expected):
         """Test Excel range reference creation."""
         detector = TableDetector()
@@ -412,36 +428,68 @@ class TestUtilityMethods:
 
         # Two identical tables should overlap
         table1 = TableInfo(
-            name="Table1", range_ref="A1:C3",
-            start_row=1, start_col=1, end_row=3, end_col=3,
-            headers=[], detection_method="grid",
-            row_count=3, col_count=3, confidence=0.8, metadata={}
+            name="Table1",
+            range_ref="A1:C3",
+            start_row=1,
+            start_col=1,
+            end_row=3,
+            end_col=3,
+            headers=[],
+            detection_method="grid",
+            row_count=3,
+            col_count=3,
+            confidence=0.8,
+            metadata={},
         )
         table2 = TableInfo(
-            name="Table2", range_ref="A1:C3",
-            start_row=1, start_col=1, end_row=3, end_col=3,
-            headers=[], detection_method="grid",
-            row_count=3, col_count=3, confidence=0.8, metadata={}
+            name="Table2",
+            range_ref="A1:C3",
+            start_row=1,
+            start_col=1,
+            end_row=3,
+            end_col=3,
+            headers=[],
+            detection_method="grid",
+            row_count=3,
+            col_count=3,
+            confidence=0.8,
+            metadata={},
         )
 
         assert detector._tables_significantly_overlap(table1, table2)
 
         # Non-overlapping tables should not overlap
         table3 = TableInfo(
-            name="Table3", range_ref="E5:G7",
-            start_row=5, start_col=5, end_row=7, end_col=7,
-            headers=[], detection_method="grid",
-            row_count=3, col_count=3, confidence=0.8, metadata={}
+            name="Table3",
+            range_ref="E5:G7",
+            start_row=5,
+            start_col=5,
+            end_row=7,
+            end_col=7,
+            headers=[],
+            detection_method="grid",
+            row_count=3,
+            col_count=3,
+            confidence=0.8,
+            metadata={},
         )
 
         assert not detector._tables_significantly_overlap(table1, table3)
 
         # Partially overlapping tables should overlap if overlap > 50%
         table4 = TableInfo(
-            name="Table4", range_ref="A2:C4",
-            start_row=2, start_col=1, end_row=4, end_col=3,
-            headers=[], detection_method="grid",
-            row_count=3, col_count=3, confidence=0.8, metadata={}
+            name="Table4",
+            range_ref="A2:C4",
+            start_row=2,
+            start_col=1,
+            end_row=4,
+            end_col=3,
+            headers=[],
+            detection_method="grid",
+            row_count=3,
+            col_count=3,
+            confidence=0.8,
+            metadata={},
         )
 
         assert detector._tables_significantly_overlap(table1, table4)

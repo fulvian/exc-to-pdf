@@ -29,6 +29,7 @@ except ImportError:
         # Final fallback - use generic Chart if available
         try:
             from openpyxl.chart import Chart
+
             # Create placeholder classes for missing chart types
             BarChart = LineChart = PieChart = ScatterChart = Chart
         except ImportError:
@@ -41,6 +42,7 @@ logger = logging.getLogger(__name__)
 
 class ChartType(Enum):
     """Supported chart types."""
+
     BAR = "bar"
     LINE = "line"
     PIE = "pie"
@@ -52,6 +54,7 @@ class ChartType(Enum):
 @dataclass
 class ChartInfo:
     """Information about an extracted chart."""
+
     chart_type: ChartType
     title: str
     data_ranges: List[str]  # Cell ranges containing data
@@ -67,11 +70,11 @@ class ChartExtractor:
     def __init__(self):
         """Initialize chart extractor."""
         self._chart_type_mapping = {
-            'BarChart': ChartType.BAR,
-            'LineChart': ChartType.LINE,
-            'PieChart': ChartType.PIE,
-            'ScatterChart': ChartType.SCATTER,
-            'AreaChart': ChartType.AREA,
+            "BarChart": ChartType.BAR,
+            "LineChart": ChartType.LINE,
+            "PieChart": ChartType.PIE,
+            "ScatterChart": ChartType.SCATTER,
+            "AreaChart": ChartType.AREA,
         }
 
     def extract_charts_from_worksheet(self, worksheet: Worksheet) -> List[ChartInfo]:
@@ -87,7 +90,7 @@ class ChartExtractor:
 
         try:
             # Check for embedded charts in worksheet
-            if hasattr(worksheet, '_charts'):
+            if hasattr(worksheet, "_charts"):
                 for chart in worksheet._charts:
                     chart_info = self._extract_chart_info(chart, worksheet.title)
                     if chart_info:
@@ -104,7 +107,9 @@ class ChartExtractor:
 
         return charts
 
-    def extract_charts_from_chartsheet(self, chartsheet: Chartsheet) -> Optional[ChartInfo]:
+    def extract_charts_from_chartsheet(
+        self, chartsheet: Chartsheet
+    ) -> Optional[ChartInfo]:
         """Extract chart from a dedicated chartsheet.
 
         Args:
@@ -118,11 +123,15 @@ class ChartExtractor:
             if chart:
                 return self._extract_chart_info(chart, chartsheet.title)
         except Exception as e:
-            logger.error(f"Error extracting chart from chartsheet {chartsheet.title}: {e}")
+            logger.error(
+                f"Error extracting chart from chartsheet {chartsheet.title}: {e}"
+            )
 
         return None
 
-    def _extract_chart_info(self, chart: Chart, worksheet_name: str) -> Optional[ChartInfo]:
+    def _extract_chart_info(
+        self, chart: Chart, worksheet_name: str
+    ) -> Optional[ChartInfo]:
         """Extract information from a single chart object.
 
         Args:
@@ -137,7 +146,7 @@ class ChartExtractor:
             chart_type = self._determine_chart_type(chart)
 
             # Extract chart title
-            title = getattr(chart.title, 'text', '') if hasattr(chart, 'title') else ''
+            title = getattr(chart.title, "text", "") if hasattr(chart, "title") else ""
 
             # Extract data ranges and series information
             data_ranges, series_data = self._extract_series_data(chart)
@@ -155,7 +164,7 @@ class ChartExtractor:
                 series_data=series_data,
                 position=position,
                 styling=styling,
-                worksheet_name=worksheet_name
+                worksheet_name=worksheet_name,
             )
 
         except Exception as e:
@@ -174,7 +183,9 @@ class ChartExtractor:
         chart_class_name = chart.__class__.__name__
         return self._chart_type_mapping.get(chart_class_name, ChartType.UNKNOWN)
 
-    def _extract_series_data(self, chart: Chart) -> Tuple[List[str], List[Dict[str, Any]]]:
+    def _extract_series_data(
+        self, chart: Chart
+    ) -> Tuple[List[str], List[Dict[str, Any]]]:
         """Extract data ranges and series information from chart.
 
         Args:
@@ -189,18 +200,26 @@ class ChartExtractor:
         try:
             for series in chart.series:
                 series_info = {
-                    'title': getattr(series.title, 'text', '') if hasattr(series, 'title') else '',
-                    'values': str(series.values) if hasattr(series, 'values') else '',
-                    'categories': str(series.categories) if hasattr(series, 'categories') else '',
-                    'color': getattr(series, 'graphicalProperties', {}).get('solidFill', {}).get('color', None)
+                    "title": (
+                        getattr(series.title, "text", "")
+                        if hasattr(series, "title")
+                        else ""
+                    ),
+                    "values": str(series.values) if hasattr(series, "values") else "",
+                    "categories": (
+                        str(series.categories) if hasattr(series, "categories") else ""
+                    ),
+                    "color": getattr(series, "graphicalProperties", {})
+                    .get("solidFill", {})
+                    .get("color", None),
                 }
 
                 series_data.append(series_info)
 
                 # Collect data ranges
-                if hasattr(series, 'values') and series.values:
+                if hasattr(series, "values") and series.values:
                     data_ranges.append(str(series.values))
-                if hasattr(series, 'categories') and series.categories:
+                if hasattr(series, "categories") and series.categories:
                     data_ranges.append(str(series.categories))
 
         except Exception as e:
@@ -233,26 +252,46 @@ class ChartExtractor:
 
         try:
             # Extract basic styling properties
-            if hasattr(chart, 'legend'):
-                styling['legend'] = {
-                    'position': getattr(chart.legend, 'position', 'r'),
-                    'visible': chart.legend.visible if hasattr(chart.legend, 'visible') else True
+            if hasattr(chart, "legend"):
+                styling["legend"] = {
+                    "position": getattr(chart.legend, "position", "r"),
+                    "visible": (
+                        chart.legend.visible
+                        if hasattr(chart.legend, "visible")
+                        else True
+                    ),
                 }
 
-            if hasattr(chart, 'display_blanks_as'):
-                styling['display_blanks_as'] = chart.display_blanks_as
+            if hasattr(chart, "display_blanks_as"):
+                styling["display_blanks_as"] = chart.display_blanks_as
 
             # Extract axis information if available
-            if hasattr(chart, 'x_axis'):
-                styling['x_axis'] = {
-                    'title': getattr(chart.x_axis.title, 'text', '') if hasattr(chart.x_axis, 'title') else '',
-                    'visible': chart.x_axis.visible if hasattr(chart.x_axis, 'visible') else True
+            if hasattr(chart, "x_axis"):
+                styling["x_axis"] = {
+                    "title": (
+                        getattr(chart.x_axis.title, "text", "")
+                        if hasattr(chart.x_axis, "title")
+                        else ""
+                    ),
+                    "visible": (
+                        chart.x_axis.visible
+                        if hasattr(chart.x_axis, "visible")
+                        else True
+                    ),
                 }
 
-            if hasattr(chart, 'y_axis'):
-                styling['y_axis'] = {
-                    'title': getattr(chart.y_axis.title, 'text', '') if hasattr(chart.y_axis, 'title') else '',
-                    'visible': chart.y_axis.visible if hasattr(chart.y_axis, 'visible') else True
+            if hasattr(chart, "y_axis"):
+                styling["y_axis"] = {
+                    "title": (
+                        getattr(chart.y_axis.title, "text", "")
+                        if hasattr(chart.y_axis, "title")
+                        else ""
+                    ),
+                    "visible": (
+                        chart.y_axis.visible
+                        if hasattr(chart.y_axis, "visible")
+                        else True
+                    ),
                 }
 
         except Exception as e:
@@ -260,7 +299,9 @@ class ChartExtractor:
 
         return styling
 
-    def detect_charts_in_workbook(self, workbook: Workbook) -> Dict[str, List[ChartInfo]]:
+    def detect_charts_in_workbook(
+        self, workbook: Workbook
+    ) -> Dict[str, List[ChartInfo]]:
         """Detect all charts in an Excel workbook.
 
         Args:
@@ -279,14 +320,16 @@ class ChartExtractor:
                     all_charts[worksheet.title] = charts
 
             # Check for dedicated chartsheets
-            if hasattr(workbook, 'chartsheets'):
+            if hasattr(workbook, "chartsheets"):
                 for chartsheet in workbook.chartsheets:
                     chart = self.extract_charts_from_chartsheet(chartsheet)
                     if chart:
                         all_charts[chartsheet.title] = [chart]
 
             total_charts = sum(len(charts) for charts in all_charts.values())
-            logger.info(f"Detected {total_charts} charts across {len(all_charts)} worksheets")
+            logger.info(
+                f"Detected {total_charts} charts across {len(all_charts)} worksheets"
+            )
 
         except Exception as e:
             logger.error(f"Error detecting charts in workbook: {e}")

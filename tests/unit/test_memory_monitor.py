@@ -11,12 +11,12 @@ from unittest.mock import Mock, patch, MagicMock
 
 import pytest
 
-from src.memory_monitor import (
+from exc_to_pdf.memory_monitor import (
     MemoryMonitor,
     MemoryStats,
     ResourceLimits,
     get_system_memory_info,
-    optimize_gc_settings
+    optimize_gc_settings,
 )
 
 
@@ -30,7 +30,7 @@ class TestMemoryStats:
             peak_mb=150.0,
             available_mb=800.0,
             percent_used=20.0,
-            process_mb=100.0
+            process_mb=100.0,
         )
 
         assert stats.current_mb == 100.0
@@ -46,9 +46,7 @@ class TestResourceLimits:
     def test_resource_limits_creation(self) -> None:
         """Test ResourceLimits object creation."""
         limits = ResourceLimits(
-            max_memory_mb=2048,
-            max_cpu_percent=80.0,
-            gc_threshold_mb=100
+            max_memory_mb=2048, max_cpu_percent=80.0, gc_threshold_mb=100
         )
 
         assert limits.max_memory_mb == 2048
@@ -63,9 +61,7 @@ class TestMemoryMonitor:
     def resource_limits(self) -> ResourceLimits:
         """Create test resource limits."""
         return ResourceLimits(
-            max_memory_mb=100,
-            max_cpu_percent=80.0,
-            gc_threshold_mb=10
+            max_memory_mb=100, max_cpu_percent=80.0, gc_threshold_mb=10
         )
 
     @pytest.fixture
@@ -73,7 +69,9 @@ class TestMemoryMonitor:
         """Create memory monitor for testing."""
         return MemoryMonitor(resource_limits)
 
-    def test_memory_monitor_initialization(self, resource_limits: ResourceLimits) -> None:
+    def test_memory_monitor_initialization(
+        self, resource_limits: ResourceLimits
+    ) -> None:
         """Test memory monitor initialization."""
         monitor = MemoryMonitor(resource_limits)
 
@@ -95,11 +93,9 @@ class TestMemoryMonitor:
         assert stats.percent_used >= 0
         assert stats.process_mb >= 0
 
-    @patch('src.memory_monitor.psutil')
+    @patch("src.memory_monitor.psutil")
     def test_get_memory_stats_with_mock(
-        self,
-        mock_psutil: Mock,
-        memory_monitor: MemoryMonitor
+        self, mock_psutil: Mock, memory_monitor: MemoryMonitor
     ) -> None:
         """Test memory statistics with mocked values."""
         # Mock system memory
@@ -117,48 +113,54 @@ class TestMemoryMonitor:
         mock_psutil.Process.return_value = mock_process_instance
 
         # Mock os.getpid to avoid actual process calls
-        with patch('src.memory_monitor.os.getpid', return_value=12345):
+        with patch("src.memory_monitor.os.getpid", return_value=12345):
             stats = memory_monitor.get_memory_stats()
 
         assert stats.current_mb == pytest.approx(500.0, rel=1e-1)
         assert stats.available_mb == pytest.approx(8000.0, rel=1e-1)
         assert stats.percent_used == pytest.approx(50.0, rel=1e-1)
 
-    def test_check_memory_limits_within_limits(self, memory_monitor: MemoryMonitor) -> None:
+    def test_check_memory_limits_within_limits(
+        self, memory_monitor: MemoryMonitor
+    ) -> None:
         """Test memory limit check when within limits."""
-        with patch.object(memory_monitor, 'get_memory_stats') as mock_stats:
+        with patch.object(memory_monitor, "get_memory_stats") as mock_stats:
             mock_stats.return_value = MemoryStats(
                 current_mb=50.0,  # Well below 100MB limit
                 peak_mb=60.0,
                 available_mb=500.0,  # Well above 100MB buffer
                 percent_used=20.0,
-                process_mb=50.0
+                process_mb=50.0,
             )
 
             assert memory_monitor.check_memory_limits() is True
 
-    def test_check_memory_limits_exceeds_process_limit(self, memory_monitor: MemoryMonitor) -> None:
+    def test_check_memory_limits_exceeds_process_limit(
+        self, memory_monitor: MemoryMonitor
+    ) -> None:
         """Test memory limit check when process limit exceeded."""
-        with patch.object(memory_monitor, 'get_memory_stats') as mock_stats:
+        with patch.object(memory_monitor, "get_memory_stats") as mock_stats:
             mock_stats.return_value = MemoryStats(
                 current_mb=150.0,  # Exceeds 100MB limit
                 peak_mb=150.0,
                 available_mb=500.0,
                 percent_used=20.0,
-                process_mb=150.0
+                process_mb=150.0,
             )
 
             assert memory_monitor.check_memory_limits() is False
 
-    def test_check_memory_limits_low_system_memory(self, memory_monitor: MemoryMonitor) -> None:
+    def test_check_memory_limits_low_system_memory(
+        self, memory_monitor: MemoryMonitor
+    ) -> None:
         """Test memory limit check when system memory is low."""
-        with patch.object(memory_monitor, 'get_memory_stats') as mock_stats:
+        with patch.object(memory_monitor, "get_memory_stats") as mock_stats:
             mock_stats.return_value = MemoryStats(
                 current_mb=50.0,  # Within process limit
                 peak_mb=60.0,
                 available_mb=50.0,  # Below 100MB system buffer
                 percent_used=90.0,
-                process_mb=50.0
+                process_mb=50.0,
             )
 
             assert memory_monitor.check_memory_limits() is False
@@ -197,7 +199,9 @@ class TestMemoryMonitor:
         if memory_monitor._monitor_thread:
             memory_monitor._monitor_thread.join(timeout=2.0)
 
-    def test_start_monitoring_already_running(self, memory_monitor: MemoryMonitor) -> None:
+    def test_start_monitoring_already_running(
+        self, memory_monitor: MemoryMonitor
+    ) -> None:
         """Test starting monitoring when already running."""
         memory_monitor.start_monitoring(interval=0.1)
 
@@ -237,9 +241,11 @@ class TestMemoryMonitor:
         # After context exit
         assert monitor._monitoring is False
 
-    def test_monitoring_loop_error_handling(self, memory_monitor: MemoryMonitor) -> None:
+    def test_monitoring_loop_error_handling(
+        self, memory_monitor: MemoryMonitor
+    ) -> None:
         """Test monitoring loop error handling."""
-        with patch.object(memory_monitor, 'get_memory_stats') as mock_stats:
+        with patch.object(memory_monitor, "get_memory_stats") as mock_stats:
             mock_stats.side_effect = Exception("Test error")
 
             # Start monitoring with fast interval
@@ -273,7 +279,7 @@ class TestSystemMemoryInfo:
         assert info["used_mb"] >= 0
         assert 0 <= info["percent_used"] <= 100
 
-    @patch('src.memory_monitor.psutil.virtual_memory')
+    @patch("src.memory_monitor.psutil.virtual_memory")
     def test_get_system_memory_info_with_mock(self, mock_virtual_memory: Mock) -> None:
         """Test system memory information with mocked values."""
         mock_memory = Mock()
@@ -290,8 +296,10 @@ class TestSystemMemoryInfo:
         assert info["used_mb"] == pytest.approx(8000.0, rel=1e-1)
         assert info["percent_used"] == pytest.approx(50.0, rel=1e-1)
 
-    @patch('src.memory_monitor.psutil.virtual_memory')
-    def test_get_system_memory_info_error_handling(self, mock_virtual_memory: Mock) -> None:
+    @patch("src.memory_monitor.psutil.virtual_memory")
+    def test_get_system_memory_info_error_handling(
+        self, mock_virtual_memory: Mock
+    ) -> None:
         """Test system memory information error handling."""
         mock_virtual_memory.side_effect = Exception("Test error")
 
@@ -322,12 +330,10 @@ class TestGCOptimization:
             gc.set_threshold(*original_threshold)
             gc.set_debug(original_debug)
 
-    @patch('src.memory_monitor.gc.set_threshold')
-    @patch('src.memory_monitor.gc.set_debug')
+    @patch("src.memory_monitor.gc.set_threshold")
+    @patch("src.memory_monitor.gc.set_debug")
     def test_optimize_gc_settings_with_mock(
-        self,
-        mock_set_debug: Mock,
-        mock_set_threshold: Mock
+        self, mock_set_debug: Mock, mock_set_threshold: Mock
     ) -> None:
         """Test GC settings optimization with mocked functions."""
         optimize_gc_settings()
@@ -342,8 +348,7 @@ class TestIntegration:
     def test_memory_monitor_with_real_memory_usage(self) -> None:
         """Test memory monitor with actual memory usage."""
         limits = ResourceLimits(
-            max_memory_mb=1000,  # Large limit for this test
-            gc_threshold_mb=1
+            max_memory_mb=1000, gc_threshold_mb=1  # Large limit for this test
         )
 
         monitor = MemoryMonitor(limits)
@@ -370,20 +375,20 @@ class TestIntegration:
         callback_data = {}
 
         def memory_limit_callback() -> None:
-            callback_data['called'] = True
+            callback_data["called"] = True
             # Just record that callback was called successfully
 
         limits = ResourceLimits(max_memory_mb=1)  # Very low limit
         monitor = MemoryMonitor(limits)
         monitor.add_memory_limit_callback("test", memory_limit_callback)
 
-        with patch.object(monitor, 'get_memory_stats') as mock_stats:
+        with patch.object(monitor, "get_memory_stats") as mock_stats:
             mock_stats.return_value = MemoryStats(
                 current_mb=10.0,  # Exceeds limit
                 peak_mb=10.0,
                 available_mb=1000.0,
                 percent_used=10.0,
-                process_mb=10.0
+                process_mb=10.0,
             )
 
             # Trigger memory limit check
@@ -394,4 +399,4 @@ class TestIntegration:
             monitor._trigger_memory_limit_callbacks()
 
             # Verify callback was called
-            assert callback_data.get('called') is True
+            assert callback_data.get("called") is True

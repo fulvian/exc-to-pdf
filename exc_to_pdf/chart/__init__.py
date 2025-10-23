@@ -10,9 +10,9 @@ from .chart_recreator import ChartRecreator
 from .chart_renderer import ChartRenderer
 
 __all__ = [
-    'ChartExtractor',
-    'ChartInfo',
-    'ChartType',
-    'ChartRecreator',
-    'ChartRenderer'
+    "ChartExtractor",
+    "ChartInfo",
+    "ChartType",
+    "ChartRecreator",
+    "ChartRenderer",
 ]

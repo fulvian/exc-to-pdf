@@ -20,7 +20,7 @@ class ExcelConfig:
 
     # File validation settings
     max_file_size_mb: int = 500  # Increased for large file support
-    allowed_extensions: List[str] = field(default_factory=lambda: ['.xlsx', '.xls'])
+    allowed_extensions: List[str] = field(default_factory=lambda: [".xlsx", ".xls"])
     strict_validation: bool = True
 
     # Processing settings

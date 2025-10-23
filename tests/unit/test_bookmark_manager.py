@@ -7,8 +7,8 @@ management, outline generation, and validation functionality.
 
 import pytest
 
-from src.bookmark_manager import BookmarkManager, BookmarkInfo
-from src.exceptions import PDFGenerationException
+from exc_to_pdf.bookmark_manager import BookmarkManager, BookmarkInfo
+from exc_to_pdf.exceptions import PDFGenerationException
 
 
 class TestBookmarkManager:
@@ -47,20 +47,28 @@ class TestBookmarkManager:
         """Test that empty sheet name raises exception."""
         manager = BookmarkManager()
 
-        with pytest.raises(PDFGenerationException, match="Failed to add sheet bookmark"):
+        with pytest.raises(
+            PDFGenerationException, match="Failed to add sheet bookmark"
+        ):
             manager.add_sheet_bookmark("", 1)
 
-        with pytest.raises(PDFGenerationException, match="Failed to add sheet bookmark"):
+        with pytest.raises(
+            PDFGenerationException, match="Failed to add sheet bookmark"
+        ):
             manager.add_sheet_bookmark("   ", 1)
 
     def test_add_sheet_bookmark_invalid_page_number_raises_exception(self) -> None:
         """Test that invalid page number raises exception."""
         manager = BookmarkManager()
 
-        with pytest.raises(PDFGenerationException, match="Failed to add sheet bookmark"):
+        with pytest.raises(
+            PDFGenerationException, match="Failed to add sheet bookmark"
+        ):
             manager.add_sheet_bookmark("Sheet1", 0)
 
-        with pytest.raises(PDFGenerationException, match="Failed to add sheet bookmark"):
+        with pytest.raises(
+            PDFGenerationException, match="Failed to add sheet bookmark"
+        ):
             manager.add_sheet_bookmark("Sheet1", -5)
 
     def test_add_multiple_sheet_bookmarks(self) -> None:
@@ -106,31 +114,41 @@ class TestBookmarkManager:
         """Test that empty table name raises exception."""
         manager = BookmarkManager()
 
-        with pytest.raises(PDFGenerationException, match="Failed to add table bookmark"):
+        with pytest.raises(
+            PDFGenerationException, match="Failed to add table bookmark"
+        ):
             manager.add_table_bookmark("", 1, "Sheet1", 1)
 
     def test_add_table_bookmark_empty_parent_raises_exception(self) -> None:
         """Test that empty parent name raises exception."""
         manager = BookmarkManager()
 
-        with pytest.raises(PDFGenerationException, match="Failed to add table bookmark"):
+        with pytest.raises(
+            PDFGenerationException, match="Failed to add table bookmark"
+        ):
             manager.add_table_bookmark("Table1", 1, "", 1)
 
     def test_add_table_bookmark_invalid_page_number_raises_exception(self) -> None:
         """Test that invalid page number raises exception."""
         manager = BookmarkManager()
 
-        with pytest.raises(PDFGenerationException, match="Failed to add table bookmark"):
+        with pytest.raises(
+            PDFGenerationException, match="Failed to add table bookmark"
+        ):
             manager.add_table_bookmark("Table1", 0, "Sheet1", 1)
 
     def test_add_table_bookmark_invalid_level_raises_exception(self) -> None:
         """Test that invalid level raises exception."""
         manager = BookmarkManager()
 
-        with pytest.raises(PDFGenerationException, match="Failed to add table bookmark"):
+        with pytest.raises(
+            PDFGenerationException, match="Failed to add table bookmark"
+        ):
             manager.add_table_bookmark("Table1", 1, "Sheet1", 0)
 
-        with pytest.raises(PDFGenerationException, match="Failed to add table bookmark"):
+        with pytest.raises(
+            PDFGenerationException, match="Failed to add table bookmark"
+        ):
             manager.add_table_bookmark("Table1", 1, "Sheet1", -1)
 
     def test_add_table_bookmark_without_parent_sheet(self) -> None:
@@ -235,7 +253,9 @@ class TestBookmarkManager:
         # Get bookmarks for Sheet1
         sheet1_bookmarks = manager.get_bookmarks_by_sheet("Sheet1")
         assert len(sheet1_bookmarks) == 3  # 1 sheet + 2 tables
-        assert all(b.title == "Sheet1" or b.parent == "Sheet1" for b in sheet1_bookmarks)
+        assert all(
+            b.title == "Sheet1" or b.parent == "Sheet1" for b in sheet1_bookmarks
+        )
 
         # Get bookmarks for Sheet2
         sheet2_bookmarks = manager.get_bookmarks_by_sheet("Sheet2")
@@ -410,10 +430,7 @@ class TestBookmarkManager:
     def test_bookmark_info_dataclass(self) -> None:
         """Test BookmarkInfo dataclass."""
         bookmark = BookmarkInfo(
-            title="Test Bookmark",
-            page_number=5,
-            level=1,
-            parent="Parent Sheet"
+            title="Test Bookmark", page_number=5, level=1, parent="Parent Sheet"
         )
 
         assert bookmark.title == "Test Bookmark"
@@ -422,9 +439,5 @@ class TestBookmarkManager:
         assert bookmark.parent == "Parent Sheet"
 
         # Test with default parent
-        bookmark_no_parent = BookmarkInfo(
-            title="Test",
-            page_number=1,
-            level=0
-        )
+        bookmark_no_parent = BookmarkInfo(title="Test", page_number=1, level=0)
         assert bookmark_no_parent.parent is None

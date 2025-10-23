@@ -10,8 +10,19 @@ from decimal import Decimal
 from typing import Optional, Union
 import logging
 
-from babel.dates import format_date, format_datetime, format_time, get_day_names, get_month_names
-from babel.numbers import format_currency, format_decimal, format_percent, format_scientific
+from babel.dates import (
+    format_date,
+    format_datetime,
+    format_time,
+    get_day_names,
+    get_month_names,
+)
+from babel.numbers import (
+    format_currency,
+    format_decimal,
+    format_percent,
+    format_scientific,
+)
 from babel.support import Format
 
 from .locale_manager import LocaleManager
@@ -30,9 +41,12 @@ class LocaleFormatters:
         """
         self.locale_manager = locale_manager
 
-    def format_date(self, date_obj: Union[date, datetime],
-                   format_style: str = 'medium',
-                   locale_code: Optional[str] = None) -> str:
+    def format_date(
+        self,
+        date_obj: Union[date, datetime],
+        format_style: str = "medium",
+        locale_code: Optional[str] = None,
+    ) -> str:
         """Format a date according to locale conventions.
 
         Args:
@@ -56,9 +70,12 @@ class LocaleFormatters:
             logger.error(f"Error formatting date: {e}")
             return str(date_obj)
 
-    def format_time(self, time_obj: Union[time, datetime],
-                   format_style: str = 'medium',
-                   locale_code: Optional[str] = None) -> str:
+    def format_time(
+        self,
+        time_obj: Union[time, datetime],
+        format_style: str = "medium",
+        locale_code: Optional[str] = None,
+    ) -> str:
         """Format a time according to locale conventions.
 
         Args:
@@ -82,10 +99,13 @@ class LocaleFormatters:
             logger.error(f"Error formatting time: {e}")
             return str(time_obj)
 
-    def format_datetime(self, datetime_obj: datetime,
-                       date_format: str = 'medium',
-                       time_format: str = 'medium',
-                       locale_code: Optional[str] = None) -> str:
+    def format_datetime(
+        self,
+        datetime_obj: datetime,
+        date_format: str = "medium",
+        time_format: str = "medium",
+        locale_code: Optional[str] = None,
+    ) -> str:
         """Format a datetime according to locale conventions.
 
         Args:
@@ -99,15 +119,20 @@ class LocaleFormatters:
         """
         try:
             locale_code = locale_code or self.locale_manager.get_current_locale()
-            return format_datetime(datetime_obj, f"{date_format} {time_format}", locale=locale_code)
+            return format_datetime(
+                datetime_obj, f"{date_format} {time_format}", locale=locale_code
+            )
 
         except Exception as e:
             logger.error(f"Error formatting datetime: {e}")
             return str(datetime_obj)
 
-    def format_number(self, number: Union[int, float, Decimal],
-                     locale_code: Optional[str] = None,
-                     decimal_places: Optional[int] = None) -> str:
+    def format_number(
+        self,
+        number: Union[int, float, Decimal],
+        locale_code: Optional[str] = None,
+        decimal_places: Optional[int] = None,
+    ) -> str:
         """Format a number according to locale conventions.
 
         Args:
@@ -135,10 +160,13 @@ class LocaleFormatters:
             logger.error(f"Error formatting number: {e}")
             return str(number)
 
-    def format_currency(self, amount: Union[int, float, Decimal],
-                       currency_code: Optional[str] = None,
-                       locale_code: Optional[str] = None,
-                       format_type: str = 'standard') -> str:
+    def format_currency(
+        self,
+        amount: Union[int, float, Decimal],
+        currency_code: Optional[str] = None,
+        locale_code: Optional[str] = None,
+        format_type: str = "standard",
+    ) -> str:
         """Format a currency amount according to locale conventions.
 
         Args:
@@ -152,22 +180,24 @@ class LocaleFormatters:
         """
         try:
             locale_code = locale_code or self.locale_manager.get_current_locale()
-            currency_code = currency_code or self.locale_manager.get_currency_code(locale_code)
+            currency_code = currency_code or self.locale_manager.get_currency_code(
+                locale_code
+            )
 
             return format_currency(
-                amount,
-                currency_code,
-                locale=locale_code,
-                format_type=format_type
+                amount, currency_code, locale=locale_code, format_type=format_type
             )
 
         except Exception as e:
             logger.error(f"Error formatting currency: {e}")
             return f"{currency_code or ''} {amount}"
 
-    def format_percent(self, number: Union[int, float, Decimal],
-                      locale_code: Optional[str] = None,
-                      decimal_places: Optional[int] = None) -> str:
+    def format_percent(
+        self,
+        number: Union[int, float, Decimal],
+        locale_code: Optional[str] = None,
+        decimal_places: Optional[int] = None,
+    ) -> str:
         """Format a percentage according to locale conventions.
 
         Args:
@@ -194,8 +224,9 @@ class LocaleFormatters:
             logger.error(f"Error formatting percentage: {e}")
             return f"{number}%"
 
-    def format_scientific(self, number: Union[int, float, Decimal],
-                         locale_code: Optional[str] = None) -> str:
+    def format_scientific(
+        self, number: Union[int, float, Decimal], locale_code: Optional[str] = None
+    ) -> str:
         """Format a number in scientific notation according to locale conventions.
 
         Args:
@@ -213,8 +244,9 @@ class LocaleFormatters:
             logger.error(f"Error formatting scientific notation: {e}")
             return f"{number}e+0"
 
-    def format_file_size(self, size_bytes: int,
-                        locale_code: Optional[str] = None) -> str:
+    def format_file_size(
+        self, size_bytes: int, locale_code: Optional[str] = None
+    ) -> str:
         """Format file size in human-readable format.
 
         Args:
@@ -228,7 +260,7 @@ class LocaleFormatters:
             locale_code = locale_code or self.locale_manager.get_current_locale()
 
             # Determine appropriate unit
-            units = ['B', 'KB', 'MB', 'GB', 'TB']
+            units = ["B", "KB", "MB", "GB", "TB"]
             size = float(size_bytes)
             unit_index = 0
 
@@ -247,8 +279,7 @@ class LocaleFormatters:
             logger.error(f"Error formatting file size: {e}")
             return f"{size_bytes} B"
 
-    def format_duration(self, seconds: float,
-                       locale_code: Optional[str] = None) -> str:
+    def format_duration(self, seconds: float, locale_code: Optional[str] = None) -> str:
         """Format duration in human-readable format.
 
         Args:
@@ -292,8 +323,8 @@ class LocaleFormatters:
         """
         try:
             locale_code = locale_code or self.locale_manager.get_current_locale()
-            month_names = get_month_names('wide', locale=locale_code)
-            return month_names.get(month, '')
+            month_names = get_month_names("wide", locale=locale_code)
+            return month_names.get(month, "")
 
         except Exception as e:
             logger.error(f"Error getting month name: {e}")
@@ -311,8 +342,8 @@ class LocaleFormatters:
         """
         try:
             locale_code = locale_code or self.locale_manager.get_current_locale()
-            day_names = get_day_names('wide', locale=locale_code)
-            return day_names.get(day, '')
+            day_names = get_day_names("wide", locale=locale_code)
+            return day_names.get(day, "")
 
         except Exception as e:
             logger.error(f"Error getting day name: {e}")
@@ -338,19 +369,19 @@ class LocaleFormatters:
             elif len(items) == 2:
                 # Use locale-specific conjunction
                 translations = self.locale_manager.get_translation_dict(locale_code)
-                if locale_code.startswith('it'):
+                if locale_code.startswith("it"):
                     return f"{items[0]} e {items[1]}"
-                elif locale_code.startswith('de'):
+                elif locale_code.startswith("de"):
                     return f"{items[0]} und {items[1]}"
-                elif locale_code.startswith('fr'):
+                elif locale_code.startswith("fr"):
                     return f"{items[0]} et {items[1]}"
-                elif locale_code.startswith('es'):
+                elif locale_code.startswith("es"):
                     return f"{items[0]} y {items[1]}"
                 else:  # English default
                     return f"{items[0]} and {items[1]}"
             else:
                 # Use Oxford comma for English
-                if locale_code.startswith('en'):
+                if locale_code.startswith("en"):
                     return f"{', '.join(str(item) for item in items[:-1])}, and {items[-1]}"
                 else:
                     return f"{', '.join(str(item) for item in items[:-1])} {items[-1]}"
@@ -369,7 +400,7 @@ class LocaleFormatters:
             'ltr' or 'rtl'
         """
         locale_code = locale_code or self.locale_manager.get_current_locale()
-        return 'rtl' if self.locale_manager.is_rtl(locale_code) else 'ltr'
+        return "rtl" if self.locale_manager.is_rtl(locale_code) else "ltr"
 
     def get_decimal_separator(self, locale_code: Optional[str] = None) -> str:
         """Get decimal separator for locale.
@@ -382,7 +413,7 @@ class LocaleFormatters:
         """
         locale_code = locale_code or self.locale_manager.get_current_locale()
         locale_info = self.locale_manager.get_locale_info(locale_code)
-        return locale_info.get('decimal_separator', '.')
+        return locale_info.get("decimal_separator", ".")
 
     def get_thousands_separator(self, locale_code: Optional[str] = None) -> str:
         """Get thousands separator for locale.
@@ -395,4 +426,4 @@ class LocaleFormatters:
         """
         locale_code = locale_code or self.locale_manager.get_current_locale()
         locale_info = self.locale_manager.get_locale_info(locale_code)
-        return locale_info.get('thousands_separator', ',')
+        return locale_info.get("thousands_separator", ",")

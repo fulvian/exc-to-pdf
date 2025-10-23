@@ -40,19 +40,29 @@ class PDFTableRenderer:
 
         # Color palette based on configuration
         self.colors = {
-            'header_bg': colors.HexColor(self.config.header_background),
-            'header_text': colors.HexColor(self.config.header_text_color),
-            'row_even': colors.whitesmoke if self.config.alternate_rows else colors.white,
-            'row_odd': colors.white,
-            'alternate_row': colors.HexColor(self.config.alternate_row_color) if self.config.alternate_rows else None,
-            'border': colors.HexColor('#CCCCCC'),
-            'grid': colors.HexColor('#CCCCCC'),
-            'text_primary': colors.HexColor('#212529'),
-            'text_secondary': colors.HexColor('#6C757D')
+            "header_bg": colors.HexColor(self.config.header_background),
+            "header_text": colors.HexColor(self.config.header_text_color),
+            "row_even": (
+                colors.whitesmoke if self.config.alternate_rows else colors.white
+            ),
+            "row_odd": colors.white,
+            "alternate_row": (
+                colors.HexColor(self.config.alternate_row_color)
+                if self.config.alternate_rows
+                else None
+            ),
+            "border": colors.HexColor("#CCCCCC"),
+            "grid": colors.HexColor("#CCCCCC"),
+            "text_primary": colors.HexColor("#212529"),
+            "text_secondary": colors.HexColor("#6C757D"),
         }
 
-    def render_table(self, table_data: List[List[Any]],
-                    headers: List[str], title: Optional[str] = None) -> Union[Table, LongTable]:
+    def render_table(
+        self,
+        table_data: List[List[Any]],
+        headers: List[str],
+        title: Optional[str] = None,
+    ) -> Union[Table, LongTable]:
         """Render data as ReportLab Table with modern styling.
 
         Args:
@@ -81,8 +91,8 @@ class PDFTableRenderer:
                     extra={
                         "total_rows": expected_rows,
                         "max_rows": max_rows,
-                        "chunk_count": (expected_rows + max_rows - 1) // max_rows
-                    }
+                        "chunk_count": (expected_rows + max_rows - 1) // max_rows,
+                    },
                 )
 
                 if self.config.enable_table_splitting:
@@ -102,12 +112,17 @@ class PDFTableRenderer:
                 extra={
                     "data_rows": len(table_data) if table_data else 0,
                     "headers": len(headers) if headers else 0,
-                    "error": str(e)
-                }
+                    "error": str(e),
+                },
             )
             raise TableRenderingException("Failed to render table") from e
 
-    def _create_single_table(self, table_data: List[List[Any]], headers: List[str], title: Optional[str] = None) -> Table:
+    def _create_single_table(
+        self,
+        table_data: List[List[Any]],
+        headers: List[str],
+        title: Optional[str] = None,
+    ) -> Table:
         """Create a single table with the given data.
 
         Args:
@@ -131,10 +146,11 @@ class PDFTableRenderer:
         table = Table(full_data, colWidths=col_widths)
 
         # Apply styling
-        table.setStyle(self._create_table_style(
-            header_rows=1 if headers else 0,
-            is_long_table=False
-        ))
+        table.setStyle(
+            self._create_table_style(
+                header_rows=1 if headers else 0, is_long_table=False
+            )
+        )
 
         logger.info(
             "Table rendered successfully",
@@ -142,13 +158,18 @@ class PDFTableRenderer:
                 "rows": len(table_data),
                 "columns": len(headers) if headers else 0,
                 "has_title": title is not None,
-                "is_long_table": False
-            }
+                "is_long_table": False,
+            },
         )
 
         return table
 
-    def _create_long_table(self, table_data: List[List[Any]], headers: List[str], title: Optional[str] = None) -> LongTable:
+    def _create_long_table(
+        self,
+        table_data: List[List[Any]],
+        headers: List[str],
+        title: Optional[str] = None,
+    ) -> LongTable:
         """Create a LongTable for large tables that can span multiple pages.
 
         Args:
@@ -172,10 +193,11 @@ class PDFTableRenderer:
         long_table = LongTable(full_data, colWidths=col_widths)
 
         # Apply styling with long table flag
-        long_table.setStyle(self._create_table_style(
-            header_rows=1 if headers else 0,
-            is_long_table=True
-        ))
+        long_table.setStyle(
+            self._create_table_style(
+                header_rows=1 if headers else 0, is_long_table=True
+            )
+        )
 
         logger.info(
             "Table rendered successfully",
@@ -183,14 +205,15 @@ class PDFTableRenderer:
                 "rows": len(table_data),
                 "columns": len(headers) if headers else 0,
                 "has_title": title is not None,
-                "is_long_table": True
-            }
+                "is_long_table": True,
+            },
         )
 
         return long_table
 
-    def handle_large_table(self, data: List[List[Any]],
-                          headers: List[str]) -> List[Table]:
+    def handle_large_table(
+        self, data: List[List[Any]], headers: List[str]
+    ) -> List[Table]:
         """Split large tables across multiple pages.
 
         Args:
@@ -219,7 +242,7 @@ class PDFTableRenderer:
 
             # Split data into chunks
             for i in range(0, len(data), chunk_size):
-                chunk = data[i:i + chunk_size]
+                chunk = data[i : i + chunk_size]
 
                 # Create table for this chunk
                 if i == 0 and has_headers:
@@ -239,8 +262,8 @@ class PDFTableRenderer:
                 extra={
                     "total_rows": len(data),
                     "chunks": len(tables),
-                    "max_rows_per_page": max_rows
-                }
+                    "max_rows_per_page": max_rows,
+                },
             )
 
             return tables
@@ -250,14 +273,15 @@ class PDFTableRenderer:
                 "Table splitting failed",
                 extra={
                     "data_rows": len(data) if data else 0,
-                    "chunk_size": chunk_size if 'chunk_size' in locals() else 0,
-                    "error": str(e)
-                }
+                    "chunk_size": chunk_size if "chunk_size" in locals() else 0,
+                    "error": str(e),
+                },
             )
             raise TableRenderingException("Failed to split large table") from e
 
-    def calculate_column_widths(self, data: List[List[Any]],
-                               headers: List[str], page_width: float) -> List[float]:
+    def calculate_column_widths(
+        self, data: List[List[Any]], headers: List[str], page_width: float
+    ) -> List[float]:
         """Calculate optimal column widths based on content and page width.
 
         Args:
@@ -281,7 +305,7 @@ class PDFTableRenderer:
 
             # Calculate content-based widths
             content_widths: List[float] = [0.0] * num_cols
-            font_name = 'Helvetica'
+            font_name = "Helvetica"
             font_size = self.config.font_size
             header_font_size = self.config.header_font_size
             padding = 12  # Total padding per column
@@ -290,23 +314,31 @@ class PDFTableRenderer:
             if headers:
                 for col_idx, header in enumerate(headers):
                     if col_idx < num_cols:
-                        header_width = stringWidth(str(header), font_name, header_font_size)
-                        content_widths[col_idx] = max(content_widths[col_idx], header_width)
+                        header_width = stringWidth(
+                            str(header), font_name, header_font_size
+                        )
+                        content_widths[col_idx] = max(
+                            content_widths[col_idx], header_width
+                        )
 
             # Analyze data content widths (sample first 100 rows for performance)
             sample_size = min(100, len(data))
             for row in data[:sample_size]:
                 for col_idx, cell_content in enumerate(row):
                     if col_idx < num_cols:
-                        content_width = stringWidth(str(cell_content), font_name, font_size)
-                        content_widths[col_idx] = max(content_widths[col_idx], content_width)
+                        content_width = stringWidth(
+                            str(cell_content), font_name, font_size
+                        )
+                        content_widths[col_idx] = max(
+                            content_widths[col_idx], content_width
+                        )
 
             # Add padding to content widths
             padded_widths = [width + padding for width in content_widths]
 
             # Apply minimum and maximum width constraints
             min_width = 0.5 * inch  # 36 points minimum
-            max_width = 3 * inch   # 216 points maximum
+            max_width = 3 * inch  # 216 points maximum
 
             constrained_widths: List[float] = []
             for width in padded_widths:
@@ -331,7 +363,9 @@ class PDFTableRenderer:
             final_total = sum(constrained_widths)
             if abs(final_total - page_width) > 0.1:  # More than 0.1 point difference
                 if num_cols > 0:
-                    constrained_widths[-1] = constrained_widths[-1] + (page_width - final_total)
+                    constrained_widths[-1] = constrained_widths[-1] + (
+                        page_width - final_total
+                    )
 
             logger.debug(
                 "Column widths calculated",
@@ -339,8 +373,10 @@ class PDFTableRenderer:
                     "columns": num_cols,
                     "page_width": page_width,
                     "total_width": sum(constrained_widths),
-                    "average_width": sum(constrained_widths) / num_cols if num_cols > 0 else 0
-                }
+                    "average_width": (
+                        sum(constrained_widths) / num_cols if num_cols > 0 else 0
+                    ),
+                },
             )
 
             return constrained_widths
@@ -352,12 +388,14 @@ class PDFTableRenderer:
                     "data_rows": len(data) if data else 0,
                     "headers": len(headers) if headers else 0,
                     "page_width": page_width,
-                    "error": str(e)
-                }
+                    "error": str(e),
+                },
             )
             raise TableRenderingException("Failed to calculate column widths") from e
 
-    def _create_table_style(self, header_rows: int = 0, is_long_table: bool = False) -> TableStyle:
+    def _create_table_style(
+        self, header_rows: int = 0, is_long_table: bool = False
+    ) -> TableStyle:
         """Create modern table styling based on configuration.
 
         Args:
@@ -371,88 +409,133 @@ class PDFTableRenderer:
 
         # Header styling
         if header_rows > 0:
-            style_elements.extend([
-                ('BACKGROUND', (0, 0), (-1, header_rows - 1), self.colors['header_bg']),
-                ('TEXTCOLOR', (0, 0), (-1, header_rows - 1), self.colors['header_text']),
-                ('FONTNAME', (0, 0), (-1, header_rows - 1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, header_rows - 1), self.config.header_font_size),
-                ('ALIGN', (0, 0), (-1, header_rows - 1), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, header_rows - 1), 'MIDDLE'),
-                ('BOTTOMPADDING', (0, 0), (-1, header_rows - 1), 12),
-                ('TOPPADDING', (0, 0), (-1, header_rows - 1), 12),
-            ])
+            style_elements.extend(
+                [
+                    (
+                        "BACKGROUND",
+                        (0, 0),
+                        (-1, header_rows - 1),
+                        self.colors["header_bg"],
+                    ),
+                    (
+                        "TEXTCOLOR",
+                        (0, 0),
+                        (-1, header_rows - 1),
+                        self.colors["header_text"],
+                    ),
+                    ("FONTNAME", (0, 0), (-1, header_rows - 1), "Helvetica-Bold"),
+                    (
+                        "FONTSIZE",
+                        (0, 0),
+                        (-1, header_rows - 1),
+                        self.config.header_font_size,
+                    ),
+                    ("ALIGN", (0, 0), (-1, header_rows - 1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, header_rows - 1), "MIDDLE"),
+                    ("BOTTOMPADDING", (0, 0), (-1, header_rows - 1), 12),
+                    ("TOPPADDING", (0, 0), (-1, header_rows - 1), 12),
+                ]
+            )
 
         # Data rows styling
         if header_rows > 0:
             data_start_row = header_rows
-            style_elements.extend([
-                ('FONTNAME', (0, data_start_row), (-1, -1), 'Helvetica'),
-                ('FONTSIZE', (0, data_start_row), (-1, -1), self.config.font_size),
-                ('ALIGN', (0, data_start_row), (-1, -1), 'CENTER'),
-                ('VALIGN', (0, data_start_row), (-1, -1), 'MIDDLE'),
-                ('TOPPADDING', (0, data_start_row), (-1, -1), 8),
-                ('BOTTOMPADDING', (0, data_start_row), (-1, -1), 8),
-            ])
+            style_elements.extend(
+                [
+                    ("FONTNAME", (0, data_start_row), (-1, -1), "Helvetica"),
+                    ("FONTSIZE", (0, data_start_row), (-1, -1), self.config.font_size),
+                    ("ALIGN", (0, data_start_row), (-1, -1), "CENTER"),
+                    ("VALIGN", (0, data_start_row), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, data_start_row), (-1, -1), 8),
+                    ("BOTTOMPADDING", (0, data_start_row), (-1, -1), 8),
+                ]
+            )
 
             # Alternating row colors - AVOID ROWBACKGROUNDS for LongTable due to ReportLab bug
             if self.config.alternate_rows:
                 if is_long_table:
                     # For LongTable, use simple background color to avoid rowpositions bug
                     style_elements.append(
-                        ('BACKGROUND', (0, data_start_row), (-1, -1), self.colors['row_even'])
+                        (
+                            "BACKGROUND",
+                            (0, data_start_row),
+                            (-1, -1),
+                            self.colors["row_even"],
+                        )
                     )
                 else:
                     # For regular tables, ROWBACKGROUNDS is safe and more efficient
                     style_elements.append(
-                        ('ROWBACKGROUNDS', (0, data_start_row), (-1, -1),
-                         [self.colors['row_even'], self.colors['alternate_row']])  # type: ignore[arg-type]
+                        (
+                            "ROWBACKGROUNDS",
+                            (0, data_start_row),
+                            (-1, -1),
+                            [self.colors["row_even"], self.colors["alternate_row"]],
+                        )  # type: ignore[arg-type]
                     )
             else:
                 style_elements.append(
-                    ('BACKGROUND', (0, data_start_row), (-1, -1), self.colors['row_even'])
+                    (
+                        "BACKGROUND",
+                        (0, data_start_row),
+                        (-1, -1),
+                        self.colors["row_even"],
+                    )
                 )
         else:
             # No headers - style all rows as data
-            style_elements.extend([
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTSIZE', (0, 0), (-1, -1), self.config.font_size),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('TOPPADDING', (0, 0), (-1, -1), 8),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                ('BACKGROUND', (0, 0), (-1, -1), self.colors['row_even']),
-            ])
+            style_elements.extend(
+                [
+                    ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                    ("FONTSIZE", (0, 0), (-1, -1), self.config.font_size),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 8),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                    ("BACKGROUND", (0, 0), (-1, -1), self.colors["row_even"]),
+                ]
+            )
 
             # Alternating row colors for no-header tables - AVOID ROWBACKGROUNDS for LongTable
             if self.config.alternate_rows:
                 if is_long_table:
                     # For LongTable, use simple background to avoid bug
                     style_elements.append(
-                        ('BACKGROUND', (0, 0), (-1, -1), self.colors['row_even'])
+                        ("BACKGROUND", (0, 0), (-1, -1), self.colors["row_even"])
                     )
                 else:
                     # For regular tables, ROWBACKGROUNDS is safe
                     style_elements.append(
-                        ('ROWBACKGROUNDS', (0, 0), (-1, -1),
-                         [self.colors['row_even'], self.colors['alternate_row']])  # type: ignore[arg-type]
+                        (
+                            "ROWBACKGROUNDS",
+                            (0, 0),
+                            (-1, -1),
+                            [self.colors["row_even"], self.colors["alternate_row"]],
+                        )  # type: ignore[arg-type]
                     )
 
         # Grid and borders
-        style_elements.extend([
-            ('GRID', (0, 0), (-1, -1), 1, self.colors['grid']),  # type: ignore
-            ('BOX', (0, 0), (-1, -1), 2, self.colors['border']),  # type: ignore
-        ])
+        style_elements.extend(
+            [
+                ("GRID", (0, 0), (-1, -1), 1, self.colors["grid"]),  # type: ignore
+                ("BOX", (0, 0), (-1, -1), 2, self.colors["border"]),  # type: ignore
+            ]
+        )
 
         # Thicker line under headers if present
         if header_rows > 0:
             style_elements.append(
-                ('LINEBELOW', (0, 0), (-1, header_rows - 1), 2, self.colors['header_bg'])  # type: ignore
+                ("LINEBELOW", (0, 0), (-1, header_rows - 1), 2, self.colors["header_bg"])  # type: ignore
             )
 
         return TableStyle(style_elements)
 
-    def create_wrapped_table(self, table_data: List[List[Any]],
-                           headers: List[str], title: Optional[str] = None) -> KeepTogether:
+    def create_wrapped_table(
+        self,
+        table_data: List[List[Any]],
+        headers: List[str],
+        title: Optional[str] = None,
+    ) -> KeepTogether:
         """Create a wrapped table that won't be split across pages.
 
         Args:
@@ -466,7 +549,9 @@ class PDFTableRenderer:
         table = self.render_table(table_data, headers, title)
         return KeepTogether([table])
 
-    def get_table_info(self, table_data: List[List[Any]], headers: List[str]) -> Dict[str, Any]:
+    def get_table_info(
+        self, table_data: List[List[Any]], headers: List[str]
+    ) -> Dict[str, Any]:
         """Get information about a table for optimization decisions.
 
         Args:
@@ -477,10 +562,18 @@ class PDFTableRenderer:
             Dictionary containing table metadata
         """
         return {
-            'row_count': len(table_data),
-            'column_count': len(headers) if headers else (len(table_data[0]) if table_data else 0),
-            'estimated_width': sum(self.calculate_column_widths(table_data, headers, self.page_width)),
-            'requires_splitting': len(table_data) > self.config.max_table_rows_per_page,
-            'has_headers': bool(headers),
-            'estimated_pages': max(1, (len(table_data) + self.config.max_table_rows_per_page - 1) // self.config.max_table_rows_per_page)
+            "row_count": len(table_data),
+            "column_count": (
+                len(headers) if headers else (len(table_data[0]) if table_data else 0)
+            ),
+            "estimated_width": sum(
+                self.calculate_column_widths(table_data, headers, self.page_width)
+            ),
+            "requires_splitting": len(table_data) > self.config.max_table_rows_per_page,
+            "has_headers": bool(headers),
+            "estimated_pages": max(
+                1,
+                (len(table_data) + self.config.max_table_rows_per_page - 1)
+                // self.config.max_table_rows_per_page,
+            ),
         }

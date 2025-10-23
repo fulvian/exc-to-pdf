@@ -51,7 +51,9 @@ class TemplateManager:
         self._loaded_templates: Dict[str, Template] = {}
         self._template_cache: Dict[str, TemplateConfig] = {}
 
-    def load_template(self, template_name: str, base_template: Optional[str] = None) -> Template:
+    def load_template(
+        self, template_name: str, base_template: Optional[str] = None
+    ) -> Template:
         """Load a template by name.
 
         Args:
@@ -126,14 +128,14 @@ class TemplateManager:
         try:
             config = StylePresets.get_preset(template_name)
             return {
-                'name': config.template_name,
-                'version': config.template_version,
-                'description': StylePresets.get_style_description(template_name),
-                'features': {
-                    'charts': config.include_charts,
-                    'branding': config.branding is not None,
-                    'dynamic_styling': config.dynamic_column_width
-                }
+                "name": config.template_name,
+                "version": config.template_version,
+                "description": StylePresets.get_style_description(template_name),
+                "features": {
+                    "charts": config.include_charts,
+                    "branding": config.branding is not None,
+                    "dynamic_styling": config.dynamic_column_width,
+                },
             }
         except Exception as e:
             logger.error(f"Error getting template info for '{template_name}': {e}")

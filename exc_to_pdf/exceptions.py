@@ -16,7 +16,12 @@ class ExcelReaderError(Exception):
     and additional context information for debugging.
     """
 
-    def __init__(self, message: str, file_path: Optional[str] = None, context: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        message: str,
+        file_path: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ):
         """
         Initialize ExcelReader error.
 
@@ -41,6 +46,7 @@ class InvalidFileException(ExcelReaderError):
     """
     Exception raised when the file is not a valid Excel file or doesn't exist.
     """
+
     pass
 
 
@@ -48,6 +54,7 @@ class WorkbookException(ExcelReaderError):
     """
     Exception raised when workbook operations fail.
     """
+
     pass
 
 
@@ -55,6 +62,7 @@ class WorksheetNotFoundException(ExcelReaderError):
     """
     Exception raised when a requested worksheet doesn't exist.
     """
+
     pass
 
 
@@ -62,6 +70,7 @@ class DataExtractionException(ExcelReaderError):
     """
     Exception raised when data extraction from worksheet fails.
     """
+
     pass
 
 
@@ -69,6 +78,7 @@ class WorkbookInitializationException(ExcelReaderError):
     """
     Exception raised when workbook initialization fails.
     """
+
     pass
 
 
@@ -76,6 +86,7 @@ class ConfigurationException(ExcelReaderError):
     """
     Exception raised when configuration is invalid.
     """
+
     pass
 
 
@@ -83,6 +94,7 @@ class PDFGenerationException(ExcelReaderError):
     """
     Exception raised when PDF generation operations fail.
     """
+
     pass
 
 
@@ -90,4 +102,5 @@ class TableRenderingException(ExcelReaderError):
     """
     Exception raised when table rendering for PDF fails.
     """
+
     pass
