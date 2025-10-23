@@ -85,7 +85,7 @@ class TestConvertCommand:
         try:
             runner = CliRunner()
 
-            with patch("src.main.PDFGenerator") as mock_generator:
+            with patch("exc_to_pdf.main.PDFGenerator") as mock_generator:
                 mock_instance = MagicMock()
                 mock_generator.return_value = mock_instance
 
@@ -117,7 +117,7 @@ class TestConvertCommand:
         try:
             runner = CliRunner()
 
-            with patch("src.main.PDFGenerator") as mock_generator:
+            with patch("exc_to_pdf.main.PDFGenerator") as mock_generator:
                 mock_instance = MagicMock()
                 mock_generator.return_value = mock_instance
 
@@ -165,7 +165,7 @@ class TestConvertCommand:
 
             runner = CliRunner()
 
-            with patch("src.main.PDFGenerator") as mock_generator:
+            with patch("exc_to_pdf.main.PDFGenerator") as mock_generator:
                 mock_instance = MagicMock()
                 mock_generator.return_value = mock_instance
 
@@ -242,7 +242,7 @@ class TestErrorHandling:
             runner = CliRunner()
 
             # Mock PDFGenerator to raise our custom exception
-            with patch("src.main.PDFGenerator") as mock_generator:
+            with patch("exc_to_pdf.main.PDFGenerator") as mock_generator:
                 from exc_to_pdf.exceptions import PDFGenerationException
 
                 mock_instance = MagicMock()
@@ -269,7 +269,7 @@ class TestErrorHandling:
         try:
             runner = CliRunner()
 
-            with patch("src.main.PDFGenerator") as mock_generator:
+            with patch("exc_to_pdf.main.PDFGenerator") as mock_generator:
                 mock_instance = MagicMock()
                 mock_generator.return_value = mock_instance
 
@@ -289,7 +289,7 @@ class TestErrorHandling:
         try:
             runner = CliRunner()
 
-            with patch("src.main.PDFGenerator") as mock_generator:
+            with patch("exc_to_pdf.main.PDFGenerator") as mock_generator:
                 mock_instance = MagicMock()
                 mock_generator.return_value = mock_instance
 
@@ -316,7 +316,7 @@ class TestMainFunction:
 
     def test_main_function_calls_cli(self) -> None:
         """Test that main function properly calls cli."""
-        with patch("src.main.cli") as mock_cli:
+        with patch("exc_to_pdf.main.cli") as mock_cli:
             from exc_to_pdf.main import main
 
             main()
@@ -336,7 +336,7 @@ class TestCLIIntegration:
 
         try:
             # Mock the actual conversion to test command parsing
-            with patch("src.main.PDFGenerator") as mock_generator:
+            with patch("exc_to_pdf.main.PDFGenerator") as mock_generator:
                 with patch("src.excel_processor.ExcelReader") as mock_reader:
                     # Setup mocks to pass validation but fail at conversion
                     mock_reader.return_value.__enter__.return_value.discover_sheets.return_value = [

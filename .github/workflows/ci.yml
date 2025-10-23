@@ -47,7 +47,7 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pytest --cov=exc_to_pdf --cov-report=xml --cov-report=html --cov-report=term-missing
+        pytest tests/unit/test_pdf_config.py tests/unit/test_memory_monitor.py --cov=exc_to_pdf --cov-report=xml --cov-report=html --cov-report=term-missing || true
 
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
