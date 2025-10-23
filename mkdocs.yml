@@ -1,0 +1,171 @@
+site_name: exc-to-pdf Documentation
+site_description: Excel to PDF converter optimized for Google NotebookLM analysis
+site_author: exc-to-pdf team
+site_url: https://fulvioventura.github.io/exc-to-pdf/
+
+# Repository
+repo_name: fulvioventura/exc-to-pdf
+repo_url: https://github.com/fulvioventura/exc-to-pdf
+edit_uri: ""
+
+# Configuration
+theme:
+  name: material
+  language: en
+  features:
+    - announce.dismiss
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.tabs.link
+    - content.tooltips
+    - header.autohide
+    - navigation.expand
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.prune
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    - toc.integrate
+  palette:
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Roboto
+    code: Roboto Mono
+  favicon: assets/favicon.png
+  logo: assets/logo.png
+
+# Plugins
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - minify:
+      minify_html: true
+  - literate-nav:
+      nav_file: SUMMARY.md
+  - section-index
+  - glightbox
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_section_style: spacy
+            merge_init_into_class: true
+            show_submodules: true
+
+# Customization
+extra:
+  analytics:
+    provider: google
+    property: !ENV GOOGLE_ANALYTICS_KEY
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/fulvioventura/exc-to-pdf
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/exc-to-pdf/
+
+# Extensions
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      normalize_issue_symbols: true
+      repo_url_shorthand: true
+      user: fulvioventura
+      repo: exc-to-pdf
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      auto_append:
+        - includes/mkdocs.md
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Navigation
+nav:
+  - Home: index.md
+  - Quick Start:
+    - quick-start/index.md
+    - Installation: quick-start/installation.md
+    - Basic Usage: quick-start/basic-usage.md
+    - Examples: quick-start/examples.md
+  - User Guide:
+    - user-guide/index.md
+    - CLI Reference: user-guide/cli-reference.md
+  - API Reference:
+    - api/index.md
+    - Exceptions: api/exceptions.md
+  - Developer Guide:
+    - developer/index.md
+  - About:
+    - about/index.md
+    - License: about/license.md
+
+# Page tree
+exclude_docs: |
+  .*/templates/
+  .*/__pycache__/
+  .*/\.pytest_cache/
+  .*/\.mypy_cache/
+  .*/htmlcov/
+
+# Copyright
+copyright: |
+  &copy; 2025 exc-to-pdf Team -
+  <a href="#__consent">Change Cookie Consent</a>

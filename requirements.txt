@@ -1,0 +1,26 @@
+# exc-to-pdf - Excel to PDF Converter for NotebookLM
+# Core Dependencies
+openpyxl>=3.1.0              # Excel file reading and parsing
+pandas>=2.0.0                 # Data processing and manipulation
+reportlab>=4.0.0              # PDF generation
+
+# Image Processing (for embedded images in Excel)
+Pillow>=10.0.0                # Image handling
+
+# Advanced Features Dependencies
+matplotlib>=3.7.0             # Chart recreation and visualization
+babel>=2.12.0                 # Internationalization support
+pytz>=2023.3                  # Timezone support for i18n
+numpy>=1.24.0                 # Numerical computing (matplotlib dependency)
+
+# Development Dependencies
+pytest>=7.0.0                 # Testing framework
+pytest-cov>=4.0.0             # Coverage reporting
+black>=23.0.0                 # Code formatting
+flake8>=6.0.0                 # Linting
+mypy>=1.0.0                   # Type checking
+
+# Optional Dependencies
+# openpyxl[image]>=3.1.0     # For embedded images support
+# python-pptx>=0.6.21       # For enhanced chart extraction
+# svglib>=1.5.0              # For SVG chart handling

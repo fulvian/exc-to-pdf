@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "exc-to-pdf"
+version = "1.0.0"
+description = "Excel to PDF converter optimized for Google NotebookLM"
+authors = [
+    {name = "exc-to-pdf team", email = "contact@example.com"}
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.9"
+keywords = ["excel", "pdf", "converter", "notebooklm", "ai"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing",
+]
+dependencies = [
+    "openpyxl>=3.1.0",
+    "pandas>=2.0.0",
+    "reportlab>=4.0.0",
+    "Pillow>=10.0.0",
+    "matplotlib>=3.7.0",
+    "babel>=2.12.0",
+    "pytz>=2023.3",
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "mypy>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/fulvioventura/exc-to-pdf"
+Documentation = "https://fulvioventura.github.io/exc-to-pdf"
+Repository = "https://github.com/fulvioventura/exc-to-pdf"
+"Bug Tracker" = "https://github.com/fulvioventura/exc-to-pdf/issues"
+Changelog = "https://github.com/fulvioventura/exc-to-pdf/blob/main/CHANGELOG.md"
+
+[project.scripts]
+exc-to-pdf = "src.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["exc_to_pdf*", "src*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.md", "*.yml", "*.yaml"]
+
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=src --cov-report=html --cov-report=term-missing"

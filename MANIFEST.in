@@ -1,0 +1,18 @@
+include README.md
+include LICENSE
+include CHANGELOG.md
+include requirements.txt
+include pyproject.toml
+include mkdocs.yml
+recursive-include docs *.md *.yml *.yaml
+recursive-include src *.py
+recursive-include tests *.py
+recursive-include exc_to_pdf *.py
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude .pytest_cache
+global-exclude .mypy_cache
+global-exclude .coverage
+global-exclude htmlcov
+global-exclude .DS_Store
+global-exclude *.so
