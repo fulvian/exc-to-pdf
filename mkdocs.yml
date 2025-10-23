@@ -1,11 +1,11 @@
 site_name: exc-to-pdf Documentation
 site_description: Excel to PDF converter optimized for Google NotebookLM analysis
 site_author: exc-to-pdf team
-site_url: https://fulvioventura.github.io/exc-to-pdf/
+site_url: https://fulvian.github.io/exc-to-pdf/
 
 # Repository
-repo_name: fulvioventura/exc-to-pdf
-repo_url: https://github.com/fulvioventura/exc-to-pdf
+repo_name: fulvian/exc-to-pdf
+repo_url: https://github.com/fulvian/exc-to-pdf
 edit_uri: ""
 
 # Configuration

@@ -54,11 +54,11 @@ test = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/fulvioventura/exc-to-pdf"
-Documentation = "https://fulvioventura.github.io/exc-to-pdf"
-Repository = "https://github.com/fulvioventura/exc-to-pdf"
-"Bug Tracker" = "https://github.com/fulvioventura/exc-to-pdf/issues"
-Changelog = "https://github.com/fulvioventura/exc-to-pdf/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/fulvian/exc-to-pdf"
+Documentation = "https://fulvian.github.io/exc-to-pdf"
+Repository = "https://github.com/fulvian/exc-to-pdf"
+"Bug Tracker" = "https://github.com/fulvian/exc-to-pdf/issues"
+Changelog = "https://github.com/fulvian/exc-to-pdf/blob/main/CHANGELOG.md"
 
 [project.scripts]
 exc-to-pdf = "src.main:main"

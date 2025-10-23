@@ -29,7 +29,7 @@ pip install exc-to-pdf
 
 ```bash
 # Clone the repository
-git clone https://github.com/fulvioventura/exc-to-pdf.git
+git clone https://github.com/fulvian/exc-to-pdf.git
 cd exc-to-pdf
 
 # Create virtual environment

@@ -92,7 +92,7 @@ This will:
 - Check package metadata
 
 ### GitHub Pages
-- Documentation available at https://fulvioventura.github.io/exc-to-pdf/
+- Documentation available at https://fulvian.github.io/exc-to-pdf/
 - Verify all pages load correctly
 - Check navigation and links
 
