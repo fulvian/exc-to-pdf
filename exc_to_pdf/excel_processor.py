@@ -31,6 +31,8 @@ from .table_detector import TableDetector, TableInfo
 from .data_validator import DataValidator, ValidationResult, ValidationRule
 from .progress_tracker import ProgressTracker
 from .cache_manager import get_global_cache
+from .excel_file_repairer import ExcelFileRepairer, ExcelErrorType, ExcelProcessingResult
+from .excel_fallback_reader import ExcelFallbackReader
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -108,7 +110,95 @@ class ExcelReader:
         # Initialize cache
         self.cache = get_global_cache() if self.config.enable_caching else None
 
+        # Initialize recovery components
+        self.file_repairer = ExcelFileRepairer()
+        self.fallback_reader = ExcelFallbackReader()
+
         logger.info(f"Initialized ExcelReader for file: {self.file_path}")
+
+    def detect_and_repair_corruption(self) -> ExcelProcessingResult:
+        """
+        Detect file corruption and attempt automatic repair.
+
+        Returns:
+            ExcelProcessingResult with repair details
+
+        Example:
+            >>> reader = ExcelReader("data.xlsx")
+            >>> result = reader.detect_and_repair_corruption()
+            >>> if result.success:
+            ...     print("File repaired successfully")
+        """
+        self.logger.info(f"Starting corruption detection and repair for: {self.file_path}")
+
+        # Detect corruption indicators
+        corruption_indicators = self.file_repairer.detect_corruption_indicators(self.file_path)
+
+        if not corruption_indicators:
+            self.logger.info("No corruption indicators detected")
+            return ExcelProcessingResult(
+                success=True,
+                error_message="No corruption detected"
+            )
+
+        self.logger.warning(f"Corruption indicators found: {len(corruption_indicators)}")
+
+        # Attempt repairs based on corruption type
+        repair_attempts = []
+
+        # Try ZIP structure repair for most common issues
+        if any(indicator in ["Absolute file paths", "Invalid specification", "Malformed workbook.xml"]
+               for indicator in corruption_indicators):
+            self.logger.info("Attempting ZIP structure repair...")
+            try:
+                success, message = self.file_repairer.repair_excel_zip_structure(self.file_path)
+                repair_attempts.append(f"ZIP repair: {message}")
+                if success:
+                    self.logger.info("ZIP repair completed successfully")
+                else:
+                    self.logger.warning(f"ZIP repair failed: {message}")
+            except Exception as e:
+                error_msg = f"ZIP repair failed: {str(e)}"
+                repair_attempts.append(error_msg)
+                self.logger.error(error_msg)
+
+        # Test if file can be read after repairs
+        try:
+            test_workbook = load_workbook(
+                filename=str(self.file_path),
+                read_only=True,
+                data_only=True,
+            )
+            sheet_count = len(test_workbook.sheetnames)
+            test_workbook.close()
+
+            if sheet_count > 0:
+                self.logger.info(f"File repair successful - {sheet_count} sheets detected")
+                return ExcelProcessingResult(
+                    success=True,
+                    repair_attempts=repair_attempts,
+                    sheets_detected=sheet_count,
+                    error_message=f"File repaired successfully with {len(repair_attempts)} repair attempts"
+                )
+            else:
+                self.logger.warning("File repair completed but no sheets detected")
+                return ExcelProcessingResult(
+                    success=False,
+                    error_type=ExcelErrorType.MISSING_SHEETS,
+                    repair_attempts=repair_attempts,
+                    sheets_detected=0,
+                    error_message="Repair completed but no sheets found"
+                )
+
+        except Exception as e:
+            error_msg = f"File still unreadable after repairs: {str(e)}"
+            self.logger.error(error_msg)
+            return ExcelProcessingResult(
+                success=False,
+                error_type=ExcelErrorType.CORRUPTION,
+                repair_attempts=repair_attempts,
+                error_message=error_msg
+            )
 
     def _validate_file(self) -> None:
         """
@@ -152,12 +242,13 @@ class ExcelReader:
 
         logger.debug(f"File validation passed: {self.file_path}")
 
-    def _initialize_workbook(self, read_only: bool = True) -> None:
+    def _initialize_workbook(self, read_only: bool = True, enable_recovery: bool = True) -> None:
         """
-        Initialize the workbook with optimal memory settings.
+        Initialize the workbook with optimal memory settings and recovery.
 
         Args:
             read_only: Whether to open workbook in read-only mode for memory efficiency
+            enable_recovery: Whether to enable automatic recovery attempts
 
         Raises:
             WorkbookInitializationException: If unable to initialize workbook
@@ -185,6 +276,38 @@ class ExcelReader:
             logger.error(
                 error_msg, extra={"file_path": str(self.file_path), "error": str(e)}
             )
+
+            # If recovery is enabled, attempt recovery
+            if enable_recovery:
+                logger.info("Attempting workbook recovery...")
+                try:
+                    # Try using fallback reader with recovery
+                    recovery_result = self.fallback_reader.read_excel_with_fallback(
+                        self.file_path, max_attempts=2
+                    )
+
+                    if recovery_result.success:
+                        logger.info(f"Recovery successful using: {recovery_result.fallback_used}")
+
+                        # Try to initialize workbook again after recovery
+                        try:
+                            self.workbook = load_workbook(
+                                filename=str(self.file_path),
+                                read_only=read_only,
+                                data_only=True,
+                            )
+                            self._is_read_only = read_only
+                            logger.info(
+                                f"Workbook reopened successfully after recovery with {len(self.workbook.sheetnames)} sheets"
+                            )
+                            return
+                        except Exception as e2:
+                            logger.warning(f"Workbook still failed after recovery: {e2}")
+
+                except Exception as recovery_error:
+                    logger.warning(f"Recovery attempt failed: {recovery_error}")
+
+            # If all recovery attempts failed, raise the original exception
             raise WorkbookInitializationException(
                 error_msg,
                 str(self.file_path),
@@ -566,6 +689,28 @@ class ExcelReader:
             self.cache.put(cache_key, result)
 
         return result
+
+    def read_with_fallback(self, **kwargs) -> ExcelProcessingResult:
+        """
+        Read Excel file using all available fallback mechanisms.
+
+        Args:
+            **kwargs: Additional arguments for reading
+
+        Returns:
+            ExcelProcessingResult with data or error information
+
+        Example:
+            >>> reader = ExcelReader("corrupted.xlsx")
+            >>> result = reader.read_with_fallback()
+            >>> if result.success:
+            ...     print(f"Read {result.sheets_detected} sheets using {result.fallback_used}")
+        """
+        self.logger.info(f"Starting fallback reading for: {self.file_path}")
+
+        return self.fallback_reader.read_excel_with_fallback(
+            self.file_path, max_attempts=3, **kwargs
+        )
 
     def process_all_sheets_optimized(
         self, progress_tracker: Optional[ProgressTracker] = None

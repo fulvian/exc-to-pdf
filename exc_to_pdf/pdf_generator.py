@@ -20,6 +20,7 @@ from .exceptions import PDFGenerationException
 from .metadata_manager import MetadataManager
 from .pdf_table_renderer import PDFTableRenderer
 from .excel_processor import ExcelReader
+from .excel_fallback_reader import ExcelFallbackReader
 
 logger = structlog.get_logger()
 
@@ -189,37 +190,91 @@ class PDFGenerator:
                 },
             )
 
-            # Read Excel file
-            with ExcelReader(excel_file) as reader:
-                sheet_data_list = []
+            # Read Excel file with fallback
+            sheet_data_list = []
 
-                if worksheet_name:
-                    # Process specific worksheet
-                    sheet_data = reader.extract_sheet_data(worksheet_name)
-                    if sheet_data.has_data:
-                        sheet_data_list.append(sheet_data)
-                    else:
-                        logger.warning(
-                            "Worksheet has no data",
-                            extra={"worksheet_name": worksheet_name},
-                        )
-                else:
-                    # Process all worksheets with data
-                    sheet_names = reader.discover_sheets()
-                    for sheet_name in sheet_names:
-                        try:
-                            sheet_data = reader.extract_sheet_data(sheet_name)
-                            if sheet_data.has_data:
-                                sheet_data_list.append(sheet_data)
-                        except Exception as e:
+            try:
+                # Try standard ExcelReader first
+                with ExcelReader(excel_file) as reader:
+                    if worksheet_name:
+                        # Process specific worksheet
+                        sheet_data = reader.extract_sheet_data(worksheet_name)
+                        if sheet_data.has_data:
+                            sheet_data_list.append(sheet_data)
+                        else:
                             logger.warning(
-                                "Failed to process worksheet",
-                                extra={"worksheet_name": sheet_name, "error": str(e)},
+                                "Worksheet has no data",
+                                extra={"worksheet_name": worksheet_name},
                             )
-                            continue
+                    else:
+                        # Process all worksheets with data
+                        sheet_names = reader.discover_sheets()
+                        for sheet_name in sheet_names:
+                            try:
+                                sheet_data = reader.extract_sheet_data(sheet_name)
+                                if sheet_data.has_data:
+                                    sheet_data_list.append(sheet_data)
+                            except Exception as e:
+                                logger.warning(
+                                    "Failed to process worksheet",
+                                    extra={"worksheet_name": sheet_name, "error": str(e)},
+                                )
+                                continue
 
                 if not sheet_data_list:
+                    logger.warning("Standard ExcelReader found no data, trying fallback...")
                     raise PDFGenerationException("No data found in Excel file")
+
+            except Exception as primary_error:
+                logger.warning(f"Standard ExcelReader failed: {primary_error}")
+                logger.info("Attempting recovery with fallback reader...")
+
+                # Fallback to enhanced reader with recovery
+                fallback_reader = ExcelFallbackReader()
+                recovery_result = fallback_reader.read_excel_with_fallback(excel_file, max_attempts=3)
+
+                if not recovery_result.success:
+                    logger.error(f"All recovery methods failed: {recovery_result.error_message}")
+                    raise PDFGenerationException(
+                        f"Unable to read Excel file: {recovery_result.error_message}"
+                    )
+
+                logger.info(f"Recovery successful using: {recovery_result.fallback_used}")
+
+                # Convert recovery data to SheetData format
+                if recovery_result.data:
+                    if isinstance(recovery_result.data, dict):
+                        # Data is in format {sheet_name: [rows]}
+                        for sheet_name, rows in recovery_result.data.items():
+                            if rows and isinstance(rows, list):
+                                # Create a mock SheetData object
+                                mock_sheet_data = type('MockSheetData', (), {
+                                    'sheet_name': sheet_name,
+                                    'tables': [],
+                                    'metadata': {'title': sheet_name},
+                                    'raw_data': rows,
+                                    'row_count': len(rows),
+                                    'col_count': len(rows[0]) if rows and rows[0] else 0,
+                                    'has_data': bool(rows)
+                                })()
+                                sheet_data_list.append(mock_sheet_data)
+                    else:
+                        # Fallback data is not a dict, cannot process
+                        logger.warning(f"Unexpected data format in recovery: {type(recovery_result.data)}")
+                        # Try to use empty data to prevent complete failure
+                        mock_sheet_data = type('MockSheetData', (), {
+                            'sheet_name': 'Recovered_Data',
+                            'tables': [],
+                            'metadata': {'title': 'Recovered Data'},
+                            'raw_data': [['No usable data recovered']],
+                            'row_count': 1,
+                            'col_count': 1,
+                            'has_data': False
+                        })()
+                        sheet_data_list.append(mock_sheet_data)
+
+                if not sheet_data_list:
+                    raise PDFGenerationException("No data found even after recovery attempts")
 
                 # Generate PDF
                 self.create_pdf(sheet_data_list, pdf_file, excel_file)

@@ -1,0 +1,349 @@
+#!/usr/bin/env python3
+"""
+DevStream CLI - Multi-Project Management Tool
+Version: 2.2.0
+
+Provides project detection, initialization, and management capabilities
+for DevStream's multi-project architecture.
+"""
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Any, Dict, Optional, List
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logger = logging.getLogger(__name__)
+
+def detect_devstream_project(cwd: str = ".") -> Optional[Dict[str, Any]]:
+    """
+    Detect if current directory is a DevStream project.
+
+    Args:
+        cwd: Current working directory to check
+
+    Returns:
+        Project metadata if DevStream project found, None otherwise
+
+    Raises:
+        PermissionError: If directory cannot be accessed
+
+    Example:
+        >>> detect_devstream_project("/path/to/project")
+        {"name": "my-project", "path": "/path/to/project", "db_path": "/path/to/project/.devstream/db/devstream.db"}
+    """
+    try:
+        # Check for .devstream directory
+        devstream_path = Path(cwd) / ".devstream"
+        if not devstream_path.exists():
+            return None
+
+        # Load workspace metadata
+        workspace_file = devstream_path / "workspace.json"
+        if not workspace_file.exists():
+            return None
+
+        with open(workspace_file, 'r') as f:
+            workspace_data = json.load(f)
+
+        # Construct project metadata
+        project_metadata = {
+            "name": workspace_data.get("name", Path(cwd).name),
+            "path": str(Path(cwd).absolute()),
+            "db_path": str(Path(cwd) / ".devstream" / "db" / "devstream.db"),
+            "workspace_file": str(workspace_file),
+            "created": workspace_data.get("created"),
+            "last_updated": workspace_data.get("last_updated"),
+            "project_type": workspace_data.get("project_type", "unknown"),
+            "scan_completed": workspace_data.get("scan_completed", False),
+            "files_count": workspace_data.get("files_count", 0)
+        }
+
+        logger.debug(f"Detected DevStream project: {project_metadata['name']}")
+        return project_metadata
+
+    except (PermissionError, json.JSONDecodeError) as e:
+        logger.error(f"Failed to detect project: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error detecting project: {e}")
+        return None
+
+def find_nearest_devstream_project(start_path: str = ".") -> Optional[Dict[str, Any]]:
+    """
+    Find the nearest DevStream project by traversing up the directory tree.
+
+    Args:
+        start_path: Starting directory for search
+
+    Returns:
+        Project metadata if found, None otherwise
+    """
+    current_path = Path(start_path).absolute()
+
+    while current_path != current_path.parent:  # Stop at filesystem root
+        project = detect_devstream_project(str(current_path))
+        if project:
+            return project
+        current_path = current_path.parent
+
+    return None
+
+def list_projects() -> List[Dict[str, Any]]:
+    """
+    List all registered DevStream projects from global registry.
+
+    Returns:
+        List of project metadata dictionaries
+    """
+    devstream_home = os.environ.get("DEVSTREAM_HOME", os.path.expanduser("~/.devstream"))
+    registry_file = Path(devstream_home) / "data" / "registry.json"
+
+    if not registry_file.exists():
+        logger.warning(f"Project registry not found: {registry_file}")
+        return []
+
+    try:
+        with open(registry_file, 'r') as f:
+            registry_data: Dict[str, Any] = json.load(f)
+
+        projects: List[Dict[str, Any]] = registry_data.get("projects", [])
+        logger.info(f"Found {len(projects)} registered projects")
+        return projects
+
+    except (json.JSONDecodeError, IOError) as e:
+        logger.error(f"Failed to read project registry: {e}")
+        return []
+
+def register_project(project_path: str, project_name: Optional[str] = None) -> bool:
+    """
+    Register a project in the global registry.
+
+    Args:
+        project_path: Path to the project directory
+        project_name: Optional custom name for the project
+
+    Returns:
+        True if registration successful, False otherwise
+    """
+    try:
+        project_path_obj = Path(project_path).absolute()
+        if not project_path_obj.exists():
+            logger.error(f"Project path does not exist: {project_path_obj}")
+            return False
+
+        # Detect project if it's a DevStream project
+        project_metadata = detect_devstream_project(str(project_path_obj))
+        if not project_metadata:
+            logger.error(f"Not a DevStream project: {project_path_obj}")
+            return False
+
+        # Update registry
+        devstream_home = os.environ.get("DEVSTREAM_HOME", os.path.expanduser("~/.devstream"))
+        registry_file = Path(devstream_home) / "data" / "registry.json"
+
+        # Ensure registry directory exists
+        registry_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Load existing registry or create new
+        if registry_file.exists():
+            with open(registry_file, 'r') as f:
+                registry_data = json.load(f)
+        else:
+            registry_data = {
+                "version": "1.0.0",
+                "created": "",
+                "last_updated": "",
+                "projects": [],
+                "statistics": {"total_projects": 0, "active_projects": 0}
+            }
+
+        # Check if project already registered
+        existing_projects = registry_data.get("projects", [])
+        for i, project in enumerate(existing_projects):
+            if project.get("path") == str(project_path_obj):
+                # Update existing project
+                existing_projects[i] = project_metadata
+                logger.info(f"Updated existing project registration: {project_metadata['name']}")
+                break
+        else:
+            # Add new project
+            existing_projects.append(project_metadata)
+            logger.info(f"Registered new project: {project_metadata['name']}")
+
+        # Update registry data
+        registry_data["projects"] = existing_projects
+        registry_data["last_updated"] = ""
+        registry_data["statistics"]["total_projects"] = len(existing_projects)
+
+        # Save registry
+        with open(registry_file, 'w') as f:
+            json.dump(registry_data, f, indent=2)
+
+        # Set secure permissions
+        os.chmod(registry_file, 0o600)
+
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to register project: {e}")
+        return False
+
+def show_status() -> None:
+    """Show DevStream status and current project information."""
+    print("DevStream Status")
+    print("=" * 50)
+
+    # Show global installation info
+    devstream_home = os.environ.get("DEVSTREAM_HOME", os.path.expanduser("~/.devstream"))
+    print(f"Global Home: {devstream_home}")
+
+    if Path(devstream_home).exists():
+        print("✅ Global installation detected")
+    else:
+        print("❌ Global installation not found")
+
+    # Show current project info
+    current_project = find_nearest_devstream_project()
+    if current_project is not None:
+        print(f"\nCurrent Project: {current_project['name']}")
+        print(f"Path: {current_project['path']}")
+        print(f"Database: {current_project['db_path']}")
+        print(f"Type: {current_project['project_type']}")
+        if current_project.get('scan_completed'):
+            print(f"Files Scanned: {current_project.get('files_count', 0)}")
+    else:
+        print("\n❌ No DevStream project found in current directory")
+
+    # Show registry summary
+    projects = list_projects()
+    print(f"\nRegistered Projects: {len(projects)}")
+
+    if projects:
+        print("\nProject List:")
+        for project in projects[:5]:  # Show first 5 projects
+            status = "✅" if Path(project['path']).exists() else "❌"
+            print(f"  {status} {project['name']} - {project['path']}")
+
+        if len(projects) > 5:
+            print(f"  ... and {len(projects) - 5} more projects")
+
+def main() -> int:
+    """Main CLI entry point."""
+    parser = argparse.ArgumentParser(
+        description="DevStream CLI - Multi-Project Management Tool",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  devstream status                    Show DevStream status
+  devstream list                      List all registered projects
+  devstream detect                    Detect current project
+  devstream register /path/to/project Register a project
+  devstream --help                    Show this help message
+        """
+    )
+
+    parser.add_argument(
+        "command",
+        choices=["status", "list", "detect", "register", "init"],
+        help="Command to execute"
+    )
+
+    parser.add_argument(
+        "path",
+        nargs="?",
+        help="Path argument for register command"
+    )
+
+    parser.add_argument(
+        "--name",
+        help="Custom name for project registration"
+    )
+
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Enable verbose output"
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="DevStream CLI 2.2.0"
+    )
+
+    args = parser.parse_args()
+
+    # Set logging level
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    try:
+        if args.command == "status":
+            show_status()
+        elif args.command == "list":
+            projects = list_projects()
+            if projects:
+                print(f"Registered Projects ({len(projects)}):")
+                print("-" * 50)
+                for project in projects:
+                    status = "✅" if Path(project['path']).exists() else "❌"
+                    print(f"{status} {project['name']}")
+                    print(f"   Path: {project['path']}")
+                    print(f"   Type: {project['project_type']}")
+                    if project.get('scan_completed'):
+                        print(f"   Files: {project.get('files_count', 0)}")
+                    print()
+            else:
+                print("No projects registered yet.")
+                print("Use 'devstream register <path>' to register a project.")
+        elif args.command == "detect":
+            detected_project: Optional[Dict[str, Any]] = find_nearest_devstream_project()
+            if detected_project is not None:
+                print("DevStream project detected:")
+                print(f"  Name: {detected_project['name']}")
+                print(f"  Path: {detected_project['path']}")
+                print(f"  Database: {detected_project['db_path']}")
+                print(f"  Type: {detected_project['project_type']}")
+                return 0
+            else:
+                print("No DevStream project found in current directory or parent directories.")
+                return 1
+        elif args.command == "register":
+            if not args.path:
+                print("Error: Path required for register command")
+                print("Usage: devstream register <path> [--name <name>]")
+                return 1
+
+            if register_project(args.path, args.name):
+                print(f"✅ Successfully registered project: {args.path}")
+                return 0
+            else:
+                print(f"❌ Failed to register project: {args.path}")
+                return 1
+        elif args.command == "init":
+            print("Project initialization will be handled by devstream-init.py")
+            print("Usage: python3 ~/.devstream/bin/devstream-init.py [options]")
+            return 0
+        else:
+            parser.print_help()
+            return 1
+
+        return 0
+
+    except KeyboardInterrupt:
+        print("\nOperation cancelled by user")
+        return 1
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        if args.verbose:
+            import traceback
+            traceback.print_exc()
+        return 1
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -143,7 +143,7 @@ class PDFTableRenderer:
         col_widths = self.calculate_column_widths(table_data, headers, self.page_width)
 
         # Create table
-        table = Table(full_data, colWidths=col_widths)
+        table = Table(full_data, colWidths=col_widths, repeatRows=1)
 
         # Apply styling
         table.setStyle(
@@ -335,6 +335,30 @@ class PDFTableRenderer:
 
             # Add padding to content widths
             padded_widths = [width + padding for width in content_widths]
+
+            # Sanitize and format cell content for better rendering
+            sanitized_data = []
+            for row in data:
+                sanitized_row = []
+                for cell_content in row:
+                    if cell_content is None:
+                        sanitized_row.append("")
+                    else:
+                        # Clean and format cell content
+                        clean_content = str(cell_content).strip()
+
+                        # Handle very long content that might cause rendering issues
+                        if len(clean_content) > 200:  # Characters longer than 200 might indicate malformed content
+                            # Truncate and add indicator
+                            clean_content = clean_content[:200] + "..."
+
+                        # Handle content with newlines that should be preserved
+                        if '\n' in clean_content and len(clean_content) < 1000:
+                            # Keep reasonable newlines, replace excessive ones
+                            clean_content = re.sub(r'\n{3,}', '\n\n', clean_content)
+
+                        sanitized_row.append(clean_content)
+                sanitized_data.append(sanitized_row)
 
             # Apply minimum and maximum width constraints
             min_width = 0.5 * inch  # 36 points minimum
@@ -548,6 +572,84 @@ class PDFTableRenderer:
         """
         table = self.render_table(table_data, headers, title)
         return KeepTogether([table])
+
+    def _is_problematic_data(
+        self, table_data: List[List[Any]]
+    ) -> bool:
+        """Check if table data appears problematic for rendering.
+
+        Args:
+            table_data: Table data to analyze
+
+        Returns:
+            True if data appears problematic
+        """
+        if not table_data:
+            return False
+
+        # Check for excessively long text content
+        max_cell_length = 200
+        for row in table_data:
+            for cell in row:
+                if cell and len(str(cell)) > max_cell_length:
+                    return True
+        return False
+
+    def _create_info_table(
+        self,
+        table_data: List[List[Any]],
+        title: Optional[str] = None,
+    ) -> Table:
+        """Create a simple info table instead of failing completely.
+
+        Args:
+            table_data: Table data
+            title: Optional table title
+
+        Returns:
+            Simple Table with info about data issues
+        """
+        # Check if table has too many rows and needs splitting
+            max_rows = self.config.max_table_rows_per_page
+            if len(table_data) > max_rows:
+                logger.debug(
+                    "Table too large, splitting across pages",
+                    extra={
+                        "total_rows": len(table_data),
+                        "max_rows": max_rows,
+                        "chunk_count": (len(table_data) + max_rows - 1) // max_rows,
+                    },
+                )
+                # Split data into chunks for processing
+                chunks = []
+                for i in range(0, len(table_data), max_rows):
+                    chunk = table_data[i : i + max_rows]
+                    chunks.append(chunk)
+                return self.handle_large_table(chunks, headers, title)
+            else:
+                return self.create_wrapped_table(table_data, headers, title)
+
+            # Create simple table with basic info
+            table = Table(limited_data)
+            table.setStyle([
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ])
+
+            if title:
+                table.setStyle([
+                    ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 12),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ])
+
+            logger.warning("Created safe info table instead of failing")
+            return table
 
     def get_table_info(
         self, table_data: List[List[Any]], headers: List[str]

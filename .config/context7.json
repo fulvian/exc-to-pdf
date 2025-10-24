@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "mcp_endpoint": "npx -y @upstash/context7-mcp@latest",
+  "session_id": "devstream-1760942367",
+  "auto_inject": true,
+  "cache_duration": 3600
+}

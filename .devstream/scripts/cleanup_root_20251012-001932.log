@@ -1,0 +1,129 @@
+=== DevStream Root Cleanup ===
+Started: Sun Oct 12 00:19:32 CEST 2025
+
+Step 1/6: Creating backup...
+✅ Backup directory created: .archive/root-backup-20251012-001932
+
+Step 2/6: Deleting temporary/generated files...
+  ✓ Deleted: =0.1.4
+  ✓ Deleted: =1.0.0
+  ✓ Deleted: =23.0.0
+  ✓ Deleted: =3.8.0
+  ✓ Deleted: .coverage
+  ✓ Deleted: htmlcov
+  ✓ Deleted: backfill_20251007_085802.log
+  ✓ Deleted: backfill_continuous_20251007_090530.log
+  ✓ Deleted: backfill_output.log
+  ✓ Deleted: backfill_verbose_20251007_090151.log
+  ✓ Deleted: devstream-server.log
+  ✓ Deleted: final_sync.log
+  ✓ Deleted: sync_final.log
+  ✓ Deleted: test_post_tool_use.txt
+  ✓ Deleted: test_session_tracking.txt
+  ✓ Deleted: .env.devstream.backup-20251002-165842
+  ✓ Deleted: prova
+✅ Temporary files deleted
+
+Step 3/6: Moving documentation files...
+  ✓ AGENTS.md → docs/architecture/AGENTS.md
+  ✓ DEPLOY_GLM46_OPTIMIZED.md → docs/deployment/DEPLOY_GLM46_OPTIMIZED.md
+  ✓ ZAI_NATIVE_SETUP_FINAL.md → docs/deployment/ZAI_NATIVE_SETUP_FINAL.md
+  ✓ GLM46_QUICKSTART.md → docs/guides/GLM46_QUICKSTART.md
+  ✓ GLM46_REASONING_MODE_GUIDE.md → docs/guides/GLM46_REASONING_MODE_GUIDE.md
+  ✓ QUICKSTART_ZAI.md → docs/guides/QUICKSTART_ZAI.md
+  ✓ START_DEVSTREAM.md → docs/guides/START_DEVSTREAM.md
+  ✓ START_WITH_ZAI.md → docs/guides/START_WITH_ZAI.md
+  ✓ ZAI_INTEGRATION_SUMMARY.md → docs/implementation/ZAI_INTEGRATION_SUMMARY.md
+  ✓ CACHE_VERIFICATION.md → docs/verification/CACHE_VERIFICATION.md
+  ✓ FASE_5.4_COMPLETION_SUMMARY.md → docs/verification/FASE_5.4_COMPLETION_SUMMARY.md
+  ✓ FASE_5.4_ROOT_CAUSE_FIX.md → docs/verification/FASE_5.4_ROOT_CAUSE_FIX.md
+  ✓ PHASE_5_TEST_COMPLETION_REPORT.md → docs/verification/PHASE_5_TEST_COMPLETION_REPORT.md
+  ✓ PHASE_C_VALIDATION_SUMMARY.md → docs/verification/PHASE_C_VALIDATION_SUMMARY.md
+  ✓ SMOKE_TEST_RESULTS.md → docs/verification/SMOKE_TEST_RESULTS.md
+  ✓ TEST_RESULTS_PHASE_C.md → docs/verification/TEST_RESULTS_PHASE_C.md
+✅ Documentation files moved
+
+Step 4/6: Moving test files...
+  ✓ test_adaptive_search.md → tests/manual/test_adaptive_search.md
+  ✓ test_concurrency_implementation.py → tests/manual/test_concurrency_implementation.py
+  ✓ test_crash_prevention.py → tests/manual/test_crash_prevention.py
+  ✓ test_embedding_comparison.js → tests/manual/test_embedding_comparison.js
+  ✓ test_embedding_comparison.py → tests/manual/test_embedding_comparison.py
+  ✓ test_fase1_integration.py → tests/manual/test_fase1_integration.py
+  ✓ test_fase3_implementation.py → tests/manual/test_fase3_implementation.py
+  ✓ test_hook_verification.py → tests/manual/test_hook_verification.py
+  ✓ test_natural_language_queries.py → tests/manual/test_natural_language_queries.py
+  ✓ test_natural_language_search.py → tests/manual/test_natural_language_search.py
+  ✓ test_new_db_operations.py → tests/manual/test_new_db_operations.py
+  ✓ test_optimized_search.py → tests/manual/test_optimized_search.py
+  ✓ test_post_tool_use.py → tests/manual/test_post_tool_use.py
+  ✓ test_quality_evaluator_simple.py → tests/manual/test_quality_evaluator_simple.py
+  ✓ test_quality_evaluator.py → tests/manual/test_quality_evaluator.py
+  ✓ test_quick_queries.py → tests/manual/test_quick_queries.py
+  ✓ test_quick_search.py → tests/manual/test_quick_search.py
+  ✓ test_rag_quality_evaluation.py → tests/manual/test_rag_quality_evaluation.py
+  ✓ test_realtime_sync.py → tests/manual/test_realtime_sync.py
+  ✓ test_search_consistency.py → tests/manual/test_search_consistency.py
+  ✓ test_session_fix_simple.py → tests/manual/test_session_fix_simple.py
+  ✓ test_simple_search.py → tests/manual/test_simple_search.py
+  ✓ test_trigger_end_to_end.py → tests/manual/test_trigger_end_to_end.py
+  ✓ test_vector_search_functional.py → tests/manual/test_vector_search_functional.py
+  ✓ test_zai_connection.sh → tests/manual/test_zai_connection.sh
+  ✓ test_zai_e2e.sh → tests/manual/test_zai_e2e.sh
+  ✓ test-backfill-dryrun.py → tests/manual/test-backfill-dryrun.py
+  ✓ test-posttooluse-retry.py → tests/manual/test-posttooluse-retry.py
+  ✓ test-retry-simple.py → tests/manual/test-retry-simple.py
+  ✓ test-vector-search-manual.js → tests/manual/test-vector-search-manual.js
+  ✓ embedding_python.json → tests/fixtures/embedding_python.json
+  ✓ embedding_typescript.json → tests/fixtures/embedding_typescript.json
+  ✓ test_query_embedding.json → tests/fixtures/test_query_embedding.json
+  ✓ events_demo.json → tests/fixtures/events_demo.json
+  ✓ events_demo.jsonl → tests/fixtures/events_demo.jsonl
+✅ Test files moved
+
+Step 5/6: Moving script files...
+  ✓ full-backfill.py → scripts/full-backfill.py
+  ✓ verify_complete_database.py → scripts/verify_complete_database.py
+  ✓ verify_real_sync.py → scripts/verify_real_sync.py
+  ✓ UPDATE_GLM46_IP.sh → scripts/UPDATE_GLM46_IP.sh
+  ✓ context7-wrapper.sh → scripts/context7-wrapper.sh
+✅ Script files moved
+
+Step 6/6: Moving config files...
+  ✓ claude-code-router-config-optimized.json → config/claude-code-router-config-optimized.json
+  ✓ .env.example.deployment → config/.env.example.deployment
+✅ Config files moved
+
+=== CLEANUP COMPLETE ===
+
+📊 Summary:
+  - Backup location: .archive/root-backup-20251012-001932
+  - Log file: /Users/fulvioventura/devstream/scripts/cleanup_root_20251012-001932.log
+
+✅ Root directory cleaned successfully!
+
+📁 Remaining files in root:
+CHANGELOG.md
+claude-dev
+CLAUDE.md
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+IMPLEMENTATION_SUMMARY_ollama_cache.md
+IMPLEMENTATION_SUMMARY_TOKEN_BUDGET.md
+install.sh
+INSTALLATION.md
+logs
+Makefile
+mcp-devstream-server
+migrations
+monitor_sync_progress.py
+PHASE_3_COMPLETION_SUMMARY.md
+poetry.lock
+PROJECT_STRUCTURE.md
+pyproject.toml
+pytest.ini
+README.md
+SECURITY.md
+start-devstream.sh
+
+Completed: Sun Oct 12 00:19:33 CEST 2025
