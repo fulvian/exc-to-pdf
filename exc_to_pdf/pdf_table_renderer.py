@@ -6,14 +6,18 @@ professional-looking tables in PDF documents using ReportLab with modern
 styling patterns and performance optimization for large datasets.
 """
 
-from typing import Any, Dict, List, Optional
+import re
+from dataclasses import dataclass
+from decimal import Decimal
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.platypus import Table, TableStyle, KeepTogether, LongTable
-from typing import Union
+from reportlab.platypus import KeepTogether, LongTable, Paragraph, Table, TableStyle
+from xml.sax.saxutils import escape
 
 import structlog
 
@@ -21,6 +25,18 @@ from .config.pdf_config import PDFConfig
 from .exceptions import TableRenderingException
 
 logger = structlog.get_logger()
+
+
+@dataclass
+class TableContent:
+    """Prepared table content ready for width calculation and rendering."""
+
+    measurement_headers: List[str]
+    display_headers: List[str]
+    measurement_rows: List[List[str]]
+    display_rows: List[List[str]]
+    numeric_columns: List[bool]
+    num_columns: int
 
 
 class PDFTableRenderer:
@@ -36,7 +52,10 @@ class PDFTableRenderer:
             ConfigurationException: If configuration validation fails
         """
         self.config = config or PDFConfig()
-        self.page_width = A4[0] - (self.config.margin_left + self.config.margin_right)
+        self.page_width = max(self.config.get_available_width(), 1.0)
+        self.min_column_width = max(0.45 * inch, self.config.font_size * 1.8)
+        self.max_column_width = 3.2 * inch
+        self.column_padding = 12.0
 
         # Color palette based on configuration
         self.colors = {
@@ -57,12 +76,33 @@ class PDFTableRenderer:
             "text_secondary": colors.HexColor("#6C757D"),
         }
 
+        # Pre-compute paragraph styles for consistent rendering
+        self.header_style = ParagraphStyle(
+            name="TableHeader",
+            fontName="Helvetica-Bold",
+            fontSize=self.config.header_font_size,
+            alignment=TA_CENTER,
+            leading=self.config.header_font_size + 2,
+        )
+        self.data_style_left = ParagraphStyle(
+            name="TableCellLeft",
+            fontName="Helvetica",
+            fontSize=self.config.font_size,
+            alignment=TA_LEFT,
+            leading=self.config.font_size + 2,
+        )
+        self.data_style_right = ParagraphStyle(
+            name="TableCellRight",
+            parent=self.data_style_left,
+            alignment=TA_RIGHT,
+        )
+
     def render_table(
         self,
         table_data: List[List[Any]],
         headers: List[str],
         title: Optional[str] = None,
-    ) -> Union[Table, LongTable]:
+    ) -> Union[Table, LongTable, List[Union[Table, LongTable]]]:
         """Render data as ReportLab Table with modern styling.
 
         Args:
@@ -71,7 +111,7 @@ class PDFTableRenderer:
             title: Optional table title
 
         Returns:
-            Formatted ReportLab Table object (Table or LongTable for large tables)
+            Formatted ReportLab Table object or list of tables when column chunking is required.
 
         Raises:
             TableRenderingException: If table rendering fails
@@ -80,31 +120,62 @@ class PDFTableRenderer:
             if not table_data and not headers:
                 raise ValueError("Both table_data and headers cannot be empty")
 
-            # Check if table is too large and needs splitting
-            max_rows = self.config.max_table_rows_per_page
-            total_rows = len(table_data)
-            expected_rows = total_rows + (1 if headers else 0)
+            content = self._prepare_table_content(table_data, headers)
+            if content.num_columns == 0:
+                raise ValueError("No columns detected for rendering")
 
-            if expected_rows > max_rows:
-                logger.debug(
-                    "Table too large, splitting across pages",
-                    extra={
-                        "total_rows": expected_rows,
-                        "max_rows": max_rows,
-                        "chunk_count": (expected_rows + max_rows - 1) // max_rows,
-                    },
+            page_width = max(self.config.get_available_width(), 1.0)
+            natural_widths = self._calculate_natural_widths(
+                content.measurement_rows, content.measurement_headers
+            )
+            column_chunks = self._chunk_columns(natural_widths, page_width)
+
+            header_paragraphs: List[Paragraph] = []
+            if headers:
+                header_paragraphs = [
+                    Paragraph(text or "&nbsp;", self.header_style)
+                    for text in content.display_headers
+                ]
+
+            paragraph_rows: List[List[Paragraph]] = []
+            for row in content.display_rows:
+                paragraph_row = []
+                for col_idx, text in enumerate(row):
+                    style = (
+                        self.data_style_right
+                        if content.numeric_columns[col_idx]
+                        else self.data_style_left
+                    )
+                    paragraph_row.append(Paragraph(text or "&nbsp;", style))
+                paragraph_rows.append(paragraph_row)
+
+            flowables: List[Union[Table, LongTable]] = []
+            for start, end in column_chunks:
+                chunk_headers = header_paragraphs[start:end] if headers else []
+                chunk_rows = [row[start:end] for row in paragraph_rows]
+                chunk_widths = self._fit_chunk_widths(
+                    natural_widths[start:end], page_width
                 )
 
-                if self.config.enable_table_splitting:
-                    # Create LongTable for large tables when splitting is enabled
-                    return self._create_long_table(table_data, headers, title)
-                else:
-                    # Return first chunk as a single table for now (splitting disabled)
-                    chunk_size = max_rows - 1 if headers else max_rows
-                    chunk = table_data[:chunk_size]
-                    return self._create_single_table(chunk, headers, title)
-            else:
-                return self._create_single_table(table_data, headers, title)
+                flowable = self._build_table_flowable(
+                    chunk_headers, chunk_rows, chunk_widths, bool(chunk_headers)
+                )
+                flowables.append(flowable)
+
+            logger.info(
+                "Table rendered successfully",
+                extra={
+                    "rows": len(table_data),
+                    "columns": content.num_columns,
+                    "has_title": title is not None,
+                    "is_long_table": any(isinstance(f, LongTable) for f in flowables),
+                    "chunks": len(flowables),
+                },
+            )
+
+            if len(flowables) == 1:
+                return flowables[0]
+            return flowables
 
         except Exception as e:
             logger.error(
@@ -117,100 +188,6 @@ class PDFTableRenderer:
             )
             raise TableRenderingException("Failed to render table") from e
 
-    def _create_single_table(
-        self,
-        table_data: List[List[Any]],
-        headers: List[str],
-        title: Optional[str] = None,
-    ) -> Table:
-        """Create a single table with the given data.
-
-        Args:
-            table_data: Table data (list of lists)
-            headers: Column headers
-            title: Optional table title
-
-        Returns:
-            Formatted ReportLab Table object
-        """
-        # Prepare full table data with headers
-        if headers:
-            full_data = [headers] + table_data
-        else:
-            full_data = table_data
-
-        # Calculate column widths
-        col_widths = self.calculate_column_widths(table_data, headers, self.page_width)
-
-        # Create table
-        table = Table(full_data, colWidths=col_widths, repeatRows=1)
-
-        # Apply styling
-        table.setStyle(
-            self._create_table_style(
-                header_rows=1 if headers else 0, is_long_table=False
-            )
-        )
-
-        logger.info(
-            "Table rendered successfully",
-            extra={
-                "rows": len(table_data),
-                "columns": len(headers) if headers else 0,
-                "has_title": title is not None,
-                "is_long_table": False,
-            },
-        )
-
-        return table
-
-    def _create_long_table(
-        self,
-        table_data: List[List[Any]],
-        headers: List[str],
-        title: Optional[str] = None,
-    ) -> LongTable:
-        """Create a LongTable for large tables that can span multiple pages.
-
-        Args:
-            table_data: Table data (list of lists)
-            headers: Column headers
-            title: Optional table title
-
-        Returns:
-            Formatted ReportLab LongTable object
-        """
-        # Prepare full table data with headers
-        if headers:
-            full_data = [headers] + table_data
-        else:
-            full_data = table_data
-
-        # Calculate column widths
-        col_widths = self.calculate_column_widths(table_data, headers, self.page_width)
-
-        # Create LongTable
-        long_table = LongTable(full_data, colWidths=col_widths)
-
-        # Apply styling with long table flag
-        long_table.setStyle(
-            self._create_table_style(
-                header_rows=1 if headers else 0, is_long_table=True
-            )
-        )
-
-        logger.info(
-            "Table rendered successfully",
-            extra={
-                "rows": len(table_data),
-                "columns": len(headers) if headers else 0,
-                "has_title": title is not None,
-                "is_long_table": True,
-            },
-        )
-
-        return long_table
-
     def handle_large_table(
         self, data: List[List[Any]], headers: List[str]
     ) -> List[Table]:
@@ -221,7 +198,7 @@ class PDFTableRenderer:
             headers: Column headers
 
         Returns:
-            List of Table objects, one per page
+            List of table flowables, one per chunk
 
         Raises:
             TableRenderingException: If table splitting fails
@@ -230,7 +207,7 @@ class PDFTableRenderer:
             if not data and not headers:
                 raise ValueError("Both data and headers cannot be empty")
 
-            tables = []
+            tables: List[Union[Table, LongTable]] = []
             max_rows = self.config.max_table_rows_per_page
             has_headers = bool(headers)
 
@@ -255,7 +232,10 @@ class PDFTableRenderer:
                     else:
                         chunk_table = self.render_table(chunk, [])
 
-                tables.append(chunk_table)
+                if isinstance(chunk_table, list):
+                    tables.extend(chunk_table)
+                else:
+                    tables.append(chunk_table)
 
             logger.info(
                 "Large table split successfully",
@@ -296,114 +276,31 @@ class PDFTableRenderer:
             TableRenderingException: If width calculation fails
         """
         try:
-            if not headers and not data:
-                return [page_width]  # Single column if no headers or data
+            content = self._prepare_table_content(data, headers)
+            if content.num_columns == 0:
+                return [page_width]
 
-            num_cols = len(headers) if headers else (len(data[0]) if data else 1)
-            if num_cols == 0:
-                return []
-
-            # Calculate content-based widths
-            content_widths: List[float] = [0.0] * num_cols
-            font_name = "Helvetica"
-            font_size = self.config.font_size
-            header_font_size = self.config.header_font_size
-            padding = 12  # Total padding per column
-
-            # Analyze header widths
-            if headers:
-                for col_idx, header in enumerate(headers):
-                    if col_idx < num_cols:
-                        header_width = stringWidth(
-                            str(header), font_name, header_font_size
-                        )
-                        content_widths[col_idx] = max(
-                            content_widths[col_idx], header_width
-                        )
-
-            # Analyze data content widths (sample first 100 rows for performance)
-            sample_size = min(100, len(data))
-            for row in data[:sample_size]:
-                for col_idx, cell_content in enumerate(row):
-                    if col_idx < num_cols:
-                        content_width = stringWidth(
-                            str(cell_content), font_name, font_size
-                        )
-                        content_widths[col_idx] = max(
-                            content_widths[col_idx], content_width
-                        )
-
-            # Add padding to content widths
-            padded_widths = [width + padding for width in content_widths]
-
-            # Sanitize and format cell content for better rendering
-            sanitized_data = []
-            for row in data:
-                sanitized_row = []
-                for cell_content in row:
-                    if cell_content is None:
-                        sanitized_row.append("")
-                    else:
-                        # Clean and format cell content
-                        clean_content = str(cell_content).strip()
-
-                        # Handle very long content that might cause rendering issues
-                        if len(clean_content) > 200:  # Characters longer than 200 might indicate malformed content
-                            # Truncate and add indicator
-                            clean_content = clean_content[:200] + "..."
-
-                        # Handle content with newlines that should be preserved
-                        if '\n' in clean_content and len(clean_content) < 1000:
-                            # Keep reasonable newlines, replace excessive ones
-                            clean_content = re.sub(r'\n{3,}', '\n\n', clean_content)
-
-                        sanitized_row.append(clean_content)
-                sanitized_data.append(sanitized_row)
-
-            # Apply minimum and maximum width constraints
-            min_width = 0.5 * inch  # 36 points minimum
-            max_width = 3 * inch  # 216 points maximum
-
-            constrained_widths: List[float] = []
-            for width in padded_widths:
-                constrained_width = max(min_width, min(max_width, width))
-                constrained_widths.append(constrained_width)
-
-            # Adjust to fit total page width
-            total_width = sum(constrained_widths)
-
-            if total_width <= page_width:
-                # Table fits, distribute extra space proportionally
-                extra_space = page_width - total_width
-                if extra_space > 0 and num_cols > 0:
-                    extra_per_col = extra_space / num_cols
-                    constrained_widths = [w + extra_per_col for w in constrained_widths]
-            else:
-                # Table too wide, scale down proportionally
-                scale_factor = page_width / total_width
-                constrained_widths = [w * scale_factor for w in constrained_widths]
-
-            # Ensure final widths sum to page_width (account for floating point precision)
-            final_total = sum(constrained_widths)
-            if abs(final_total - page_width) > 0.1:  # More than 0.1 point difference
-                if num_cols > 0:
-                    constrained_widths[-1] = constrained_widths[-1] + (
-                        page_width - final_total
-                    )
+            resolved_page_width = max(page_width, 1.0)
+            natural_widths = self._calculate_natural_widths(
+                content.measurement_rows, content.measurement_headers
+            )
+            adjusted_widths = self._fit_widths_to_page(natural_widths, resolved_page_width)
 
             logger.debug(
                 "Column widths calculated",
                 extra={
-                    "columns": num_cols,
-                    "page_width": page_width,
-                    "total_width": sum(constrained_widths),
+                    "columns": content.num_columns,
+                    "page_width": resolved_page_width,
+                    "total_width": sum(adjusted_widths),
                     "average_width": (
-                        sum(constrained_widths) / num_cols if num_cols > 0 else 0
+                        sum(adjusted_widths) / content.num_columns
+                        if content.num_columns > 0
+                        else 0
                     ),
                 },
             )
 
-            return constrained_widths
+            return adjusted_widths
 
         except Exception as e:
             logger.error(
@@ -416,6 +313,247 @@ class PDFTableRenderer:
                 },
             )
             raise TableRenderingException("Failed to calculate column widths") from e
+
+    def _prepare_table_content(
+        self, data: List[List[Any]], headers: List[str]
+    ) -> TableContent:
+        """Normalize and sanitize table content for width calculation and rendering."""
+        num_cols = max(len(headers), max((len(row) for row in data), default=0))
+
+        measurement_headers: List[str] = []
+        display_headers: List[str] = []
+
+        if num_cols == 0 and data:
+            num_cols = len(data[0])
+
+        if num_cols == 0:
+            return TableContent(
+                measurement_headers=[],
+                display_headers=[],
+                measurement_rows=[],
+                display_rows=[],
+                numeric_columns=[],
+                num_columns=0,
+            )
+
+        if headers:
+            for idx in range(num_cols):
+                header_value = headers[idx] if idx < len(headers) else f"Column {idx+1}"
+                measurement, display = self._normalize_cell(header_value)
+                measurement_headers.append(measurement)
+                display_headers.append(display)
+        else:
+            measurement_headers = ["" for _ in range(num_cols)]
+            display_headers = ["" for _ in range(num_cols)]
+
+        numeric_columns: List[bool] = [True] * num_cols
+        measurement_rows: List[List[str]] = []
+        display_rows: List[List[str]] = []
+
+        for row in data:
+            row_list = list(row) if isinstance(row, (list, tuple)) else [row]
+            measurement_row: List[str] = []
+            display_row: List[str] = []
+
+            for idx in range(num_cols):
+                value = row_list[idx] if idx < len(row_list) else ""
+                measurement_text, display_text = self._normalize_cell(value)
+                measurement_row.append(measurement_text)
+                display_row.append(display_text)
+
+                if self._has_content(value) and not self._is_numeric(value):
+                    numeric_columns[idx] = False
+
+            measurement_rows.append(measurement_row)
+            display_rows.append(display_row)
+
+        return TableContent(
+            measurement_headers=measurement_headers,
+            display_headers=display_headers,
+            measurement_rows=measurement_rows,
+            display_rows=display_rows,
+            numeric_columns=numeric_columns,
+            num_columns=num_cols,
+        )
+
+    def _calculate_natural_widths(
+        self, data: List[List[str]], headers: List[str]
+    ) -> List[float]:
+        """Calculate natural column widths before fitting to the page."""
+        num_cols = max(len(headers), max((len(row) for row in data), default=0))
+        if num_cols == 0:
+            return []
+
+        content_widths: List[float] = [0.0] * num_cols
+
+        header_font_name = "Helvetica-Bold"
+        data_font_name = "Helvetica"
+        header_font_size = self.config.header_font_size
+        data_font_size = self.config.font_size
+
+        for idx in range(min(len(headers), num_cols)):
+            header_text = headers[idx] or ""
+            header_width = stringWidth(header_text, header_font_name, header_font_size)
+            content_widths[idx] = max(content_widths[idx], header_width)
+
+        sample_size = min(200, len(data))
+        for row in data[:sample_size]:
+            for idx in range(min(len(row), num_cols)):
+                cell_text = row[idx] or ""
+                cell_width = stringWidth(cell_text, data_font_name, data_font_size)
+                content_widths[idx] = max(content_widths[idx], cell_width)
+
+        widths: List[float] = []
+        for width in content_widths:
+            padded = width + self.column_padding
+            constrained = max(self.min_column_width, min(self.max_column_width, padded))
+            widths.append(constrained)
+
+        return widths
+
+    def _chunk_columns(
+        self, widths: List[float], page_width: float
+    ) -> List[Tuple[int, int]]:
+        """Split columns into chunks that fit within the page width."""
+        if not widths:
+            return []
+
+        chunks: List[Tuple[int, int]] = []
+        start = 0
+        running_width = 0.0
+
+        adjusted_page_width = max(page_width, self.min_column_width)
+
+        for idx, width in enumerate(widths):
+            column_width = max(width, self.min_column_width)
+
+            if column_width >= adjusted_page_width:
+                if running_width > 0:
+                    chunks.append((start, idx))
+                chunks.append((idx, idx + 1))
+                start = idx + 1
+                running_width = 0.0
+                continue
+
+            if running_width == 0.0:
+                running_width = column_width
+                continue
+
+            if running_width + column_width > adjusted_page_width:
+                chunks.append((start, idx))
+                start = idx
+                running_width = column_width
+            else:
+                running_width += column_width
+
+        if start < len(widths):
+            chunks.append((start, len(widths)))
+
+        return chunks
+
+    def _fit_chunk_widths(
+        self, widths: List[float], page_width: float
+    ) -> List[float]:
+        """Scale or expand column widths to fill the available page width."""
+        if not widths:
+            return []
+
+        adjusted_page_width = max(page_width, self.min_column_width)
+        total_width = sum(widths)
+
+        if total_width <= 0:
+            even_width = adjusted_page_width / len(widths)
+            return [even_width for _ in widths]
+
+        if total_width < adjusted_page_width:
+            extra = (adjusted_page_width - total_width) / len(widths)
+            adjusted = [w + extra for w in widths]
+        else:
+            scale = adjusted_page_width / total_width
+            adjusted = [w * scale for w in widths]
+
+        diff = adjusted_page_width - sum(adjusted)
+        if abs(diff) > 0.1:
+            adjusted[-1] += diff
+
+        return adjusted
+
+    def _fit_widths_to_page(
+        self, widths: List[float], page_width: float
+    ) -> List[float]:
+        """Public helper to align widths with page width."""
+        adjusted_page_width = max(page_width, self.min_column_width)
+        return self._fit_chunk_widths(widths, adjusted_page_width)
+
+    def _build_table_flowable(
+        self,
+        headers: List[Paragraph],
+        rows: List[List[Paragraph]],
+        column_widths: List[float],
+        has_headers: bool,
+    ) -> Union[Table, LongTable]:
+        """Create a table or long table flowable from prepared content."""
+        header_rows = 1 if has_headers else 0
+        data_row_count = len(rows)
+        expected_rows = data_row_count + header_rows
+        use_long_table = (
+            self.config.enable_table_splitting
+            and expected_rows > self.config.max_table_rows_per_page
+        )
+
+        full_data: List[List[Paragraph]] = []
+        if has_headers:
+            full_data.append(headers)
+        full_data.extend(rows)
+
+        table_cls = LongTable if use_long_table else Table
+        table = table_cls(
+            full_data,
+            colWidths=column_widths,
+            repeatRows=header_rows if has_headers else 0,
+        )
+        table.hAlign = "LEFT"
+        table.setStyle(
+            self._create_table_style(
+                header_rows=header_rows,
+                is_long_table=use_long_table,
+            )
+        )
+        return table
+
+    def _normalize_cell(self, value: Any) -> Tuple[str, str]:
+        """Normalize a cell value for width measurement and rendering."""
+        if value is None:
+            return "", ""
+
+        text = str(value)
+        text = text.strip()
+
+        if not text:
+            return "", ""
+
+        max_length = 2000
+        if len(text) > max_length:
+            text = text[:max_length] + "..."
+
+        measurement_text = re.sub(r"\s+", " ", text).replace("\n", " ").strip()
+        display_text = escape(text).replace("\n", "<br/>")
+
+        return measurement_text, display_text
+
+    def _is_numeric(self, value: Any) -> bool:
+        """Determine if a value should be treated as numeric for alignment."""
+        if value is None or isinstance(value, bool):
+            return False
+        return isinstance(value, (int, float, Decimal))
+
+    def _has_content(self, value: Any) -> bool:
+        """Check if a cell value carries meaningful content."""
+        if value is None:
+            return False
+        if isinstance(value, str):
+            return bool(value.strip())
+        return True
 
     def _create_table_style(
         self, header_rows: int = 0, is_long_table: bool = False
@@ -468,10 +606,13 @@ class PDFTableRenderer:
                 [
                     ("FONTNAME", (0, data_start_row), (-1, -1), "Helvetica"),
                     ("FONTSIZE", (0, data_start_row), (-1, -1), self.config.font_size),
-                    ("ALIGN", (0, data_start_row), (-1, -1), "CENTER"),
-                    ("VALIGN", (0, data_start_row), (-1, -1), "MIDDLE"),
+                    ("ALIGN", (0, data_start_row), (-1, -1), "LEFT"),
+                    ("VALIGN", (0, data_start_row), (-1, -1), "TOP"),
                     ("TOPPADDING", (0, data_start_row), (-1, -1), 8),
                     ("BOTTOMPADDING", (0, data_start_row), (-1, -1), 8),
+                    ("LEFTPADDING", (0, data_start_row), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, data_start_row), (-1, -1), 6),
+                    ("WORDWRAP", (0, data_start_row), (-1, -1), "CJK"),
                 ]
             )
 
@@ -512,10 +653,13 @@ class PDFTableRenderer:
                 [
                     ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
                     ("FONTSIZE", (0, 0), (-1, -1), self.config.font_size),
-                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     ("TOPPADDING", (0, 0), (-1, -1), 8),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("WORDWRAP", (0, 0), (-1, -1), "CJK"),
                     ("BACKGROUND", (0, 0), (-1, -1), self.colors["row_even"]),
                 ]
             )
@@ -570,86 +714,10 @@ class PDFTableRenderer:
         Returns:
             KeepTogether flowable containing the table
         """
-        table = self.render_table(table_data, headers, title)
-        return KeepTogether([table])
-
-    def _is_problematic_data(
-        self, table_data: List[List[Any]]
-    ) -> bool:
-        """Check if table data appears problematic for rendering.
-
-        Args:
-            table_data: Table data to analyze
-
-        Returns:
-            True if data appears problematic
-        """
-        if not table_data:
-            return False
-
-        # Check for excessively long text content
-        max_cell_length = 200
-        for row in table_data:
-            for cell in row:
-                if cell and len(str(cell)) > max_cell_length:
-                    return True
-        return False
-
-    def _create_info_table(
-        self,
-        table_data: List[List[Any]],
-        title: Optional[str] = None,
-    ) -> Table:
-        """Create a simple info table instead of failing completely.
-
-        Args:
-            table_data: Table data
-            title: Optional table title
-
-        Returns:
-            Simple Table with info about data issues
-        """
-        # Check if table has too many rows and needs splitting
-            max_rows = self.config.max_table_rows_per_page
-            if len(table_data) > max_rows:
-                logger.debug(
-                    "Table too large, splitting across pages",
-                    extra={
-                        "total_rows": len(table_data),
-                        "max_rows": max_rows,
-                        "chunk_count": (len(table_data) + max_rows - 1) // max_rows,
-                    },
-                )
-                # Split data into chunks for processing
-                chunks = []
-                for i in range(0, len(table_data), max_rows):
-                    chunk = table_data[i : i + max_rows]
-                    chunks.append(chunk)
-                return self.handle_large_table(chunks, headers, title)
-            else:
-                return self.create_wrapped_table(table_data, headers, title)
-
-            # Create simple table with basic info
-            table = Table(limited_data)
-            table.setStyle([
-                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 0), (-1, -1), 10),
-                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("TOPPADDING", (0, 0), (-1, -1), 8),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-            ])
-
-            if title:
-                table.setStyle([
-                    ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 12),
-                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ])
-
-            logger.warning("Created safe info table instead of failing")
-            return table
+        rendered = self.render_table(table_data, headers, title)
+        if isinstance(rendered, list):
+            return KeepTogether(rendered)
+        return KeepTogether([rendered])
 
     def get_table_info(
         self, table_data: List[List[Any]], headers: List[str]
@@ -663,19 +731,31 @@ class PDFTableRenderer:
         Returns:
             Dictionary containing table metadata
         """
+        content = self._prepare_table_content(table_data, headers)
+        page_width = max(self.config.get_available_width(), 1.0)
+        natural_widths = self._calculate_natural_widths(
+            content.measurement_rows, content.measurement_headers
+        )
+        column_chunks = self._chunk_columns(natural_widths, page_width)
+
+        if column_chunks:
+            estimated_chunk_widths = [
+                sum(natural_widths[start:end]) for start, end in column_chunks
+            ]
+            estimated_width = max(estimated_chunk_widths)
+        else:
+            estimated_width = sum(natural_widths)
+
+        max_rows = self.config.max_table_rows_per_page
+        row_chunks = max(1, (len(table_data) + max_rows - 1) // max_rows)
+        column_chunk_count = max(1, len(column_chunks) or 1)
+
         return {
             "row_count": len(table_data),
-            "column_count": (
-                len(headers) if headers else (len(table_data[0]) if table_data else 0)
-            ),
-            "estimated_width": sum(
-                self.calculate_column_widths(table_data, headers, self.page_width)
-            ),
-            "requires_splitting": len(table_data) > self.config.max_table_rows_per_page,
+            "column_count": content.num_columns,
+            "estimated_width": estimated_width,
+            "requires_splitting": len(table_data) > max_rows,
             "has_headers": bool(headers),
-            "estimated_pages": max(
-                1,
-                (len(table_data) + self.config.max_table_rows_per_page - 1)
-                // self.config.max_table_rows_per_page,
-            ),
+            "estimated_pages": row_chunks * column_chunk_count,
+            "requires_column_chunking": column_chunk_count > 1,
         }
